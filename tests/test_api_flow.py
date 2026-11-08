@@ -157,17 +157,44 @@ def test_manual_edit_persists_in_final_export():
 
     client.post("/api/optimize", json={"session_id": sid})
 
-    # User manually adds a unique project accomplishment in Section H
-    custom_bullet = "Liderou migração de 15 servidores para Kubernetes com 99.9% de uptime."
-    custom_edited = up["initial_diagnosis"]["positive_points"][0] + f"\n\nEXPERIÊNCIA PROFISSIONAL\nAnalista Sênior - NovaEmpresa (2024)\n• {custom_bullet}"
+    # User manually pastes a complete Markdown CV into Section H
+    custom_markdown = """# BEATRIZ MENDES ROCHA
+Curitiba - PR | beatriz@email.com | (41) 99888-7777 | linkedin.com/in/beatrizmendes
 
-    client.post("/api/manual-edit", json={"session_id": sid, "edited_text": custom_edited})
+## Resumo Profissional
+Especialista em Engenharia de Dados com 6 anos de atuação em ambientes distribuídos de alta escala.
 
-    # Download DOCX and check custom bullet
+## Experiência Profissional
+### Engenheira de Dados Sênior | DataFin Tech (2022 - 2024)
+- Projetou pipelines de streaming com Kafka e Spark processando 2TB de dados diários.
+- Reduziu custos de infraestrutura em 35% através de partições otimizadas no Delta Lake.
+
+## Formação Acadêmica
+### Bacharelado em Ciência da Computação | UFPR (2015 - 2019)
+
+## Habilidades e Tecnologias
+- Python, Apache Spark, Kafka, SQL, Docker, AWS, Databricks
+"""
+
+    edit_res = client.post("/api/manual-edit", json={"session_id": sid, "edited_text": custom_markdown})
+    assert edit_res.status_code == 200
+    res_data = edit_res.json()
+    assert "preview_html" in res_data
+    assert "BEATRIZ MENDES ROCHA" in res_data["preview_html"]
+
+    # Download DOCX and check that Beatriz Mendes Rocha is there!
     d_res = client.get(f"/api/export/docx?session_id={sid}")
     doc = Document(io.BytesIO(d_res.content))
     all_text = "\n".join(p.text for p in doc.paragraphs)
-    assert "NovaEmpresa" in all_text or "Kubernetes" in all_text
+    assert "BEATRIZ MENDES ROCHA" in all_text
+    assert "DataFin Tech" in all_text
+
+    # Download PDF and check that Beatriz Mendes Rocha is there!
+    p_res = client.get(f"/api/export/pdf?session_id={sid}")
+    pdf_reader = PdfReader(io.BytesIO(p_res.content))
+    pdf_text = pdf_reader.pages[0].extract_text()
+    assert "BEATRIZ MENDES ROCHA" in pdf_text
+    assert "DataFin Tech" in pdf_text
 
 
 def test_no_score_inflation_without_evidence():

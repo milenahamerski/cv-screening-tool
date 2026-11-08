@@ -42,6 +42,20 @@ function initUpload() {
       handleFileUpload(e.target.files[0]);
     }
   });
+
+  const btnOpenMd = document.getElementById("btn-open-markdown-mode");
+  if (btnOpenMd) {
+    btnOpenMd.addEventListener("click", () => {
+      document.getElementById("section-manual-review").classList.remove("hidden");
+      document.getElementById("section-export").classList.remove("hidden");
+      document.getElementById("section-manual-review").scrollIntoView({ behavior: "smooth" });
+      const editor = document.getElementById("cv-editor");
+      editor.focus();
+      if (editor.value.trim()) {
+        renderMarkdownPreviewLocally(editor.value);
+      }
+    });
+  }
 }
 
 async function handleFileUpload(file) {
@@ -261,8 +275,8 @@ async function runOptimizationFlow() {
     // Section F: Recomendações finais
     renderFinalRecommendations(data.comparison.human_recommendations);
 
-    // Section H: Revisão manual (carrega texto no editor)
-    renderManualReview(data.optimized_text);
+    // Section H: Revisão manual (carrega Markdown e Prévia bonita)
+    renderManualReview(data.optimized_markdown || data.optimized_text, data.preview_html);
 
     // Section G: Exportação dos documentos
     setupExportLinks(currentSessionId);
@@ -472,69 +486,343 @@ function renderFinalRecommendations(recs) {
 }
 
 // -------------------------------------------------------------
-// SECTION H: MANUAL REVIEW & LIVE RE-ANALYSIS
+// SECTION H: MANUAL REVIEW & LIVE RE-ANALYSIS (MARKDOWN SUPPORT)
 // -------------------------------------------------------------
-function renderManualReview(optText) {
+function renderManualReview(mdContent, previewHtml) {
   const sec = document.getElementById("section-manual-review");
   sec.classList.remove("hidden");
 
   const editor = document.getElementById("cv-editor");
-  editor.value = optText;
+  editor.value = mdContent;
+
+  const previewBox = document.getElementById("cv-paper-container");
+  if (previewHtml) {
+    previewBox.innerHTML = previewHtml;
+  } else {
+    renderMarkdownPreviewLocally(mdContent);
+  }
   document.getElementById("editor-status").textContent = "";
+}
+
+// Client-side instant renderer so the user sees their "CV Bonitinho" in real time as they type/paste!
+function renderMarkdownPreviewLocally(mdText) {
+  const previewBox = document.getElementById("cv-paper-container");
+  if (!previewBox) return;
+
+  if (!mdText || !mdText.trim()) {
+    previewBox.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">Cole ou digite seu Markdown ao lado para visualizar a prévia do CV...</div>`;
+    return;
+  }
+
+  const lines = mdText.split("\n");
+  let name = "SEU NOME COMPLETO";
+  let contacts = [];
+  let sections = [];
+  let currentSec = null;
+  let currentJob = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+
+    // H1: Name
+    if (raw.startsWith("# ") && name === "SEU NOME COMPLETO") {
+      name = raw.replace(/^#\s+/, "").replace(/\*\*/g, "").trim().toUpperCase();
+      continue;
+    }
+
+    // Top contact line (before any ##)
+    if (sections.length === 0 && !currentSec && (raw.includes("@") || raw.includes("|") || raw.includes("http") || raw.includes("("))) {
+      const parts = raw.split("|").map(p => p.trim()).filter(Boolean);
+      parts.forEach(p => {
+        let clean = p.replace(/\[(.*?)\]\((.*?)\)/g, "$1").replace(/\*\*/g, "");
+        if (clean.includes("@")) contacts.push(`<span>✉️ ${clean}</span>`);
+        else if (/\d{4,5}[-\s]?\d{4}/.test(clean)) contacts.push(`<span>📞 ${clean}</span>`);
+        else if (/linkedin/i.test(clean)) contacts.push(`<span>🔗 ${clean}</span>`);
+        else if (/github/i.test(clean)) contacts.push(`<span>💻 ${clean}</span>`);
+        else contacts.push(`<span>📍 ${clean}</span>`);
+      });
+      continue;
+    }
+
+    // H2: Section heading
+    if (raw.startsWith("## ") || (!raw.startsWith("-") && !raw.startsWith("*") && !raw.startsWith("###") && raw === raw.toUpperCase() && raw.length < 35 && (raw.includes("EXPERI") || raw.includes("RESUMO") || raw.includes("FORMA") || raw.includes("HABIL") || raw.includes("IDIOM")))) {
+      if (currentJob && currentSec) {
+        currentSec.jobs.push(currentJob);
+        currentJob = null;
+      }
+      if (currentSec) sections.push(currentSec);
+
+      const secTitle = raw.replace(/^##\s+/, "").replace(/\*\*/g, "").trim().toUpperCase();
+      currentSec = { title: secTitle, text: [], jobs: [], bullets: [], isSkills: secTitle.includes("HABIL") || secTitle.includes("SKILL") || secTitle.includes("TECNOLOG") };
+      continue;
+    }
+
+    if (!currentSec) {
+      currentSec = { title: "RESUMO PROFISSIONAL", text: [], jobs: [], bullets: [], isSkills: false };
+    }
+
+    // H3: Job or Education item
+    if (raw.startsWith("### ") || (!raw.startsWith("-") && !raw.startsWith("*") && (raw.includes(" | ") || raw.includes(" - ")) && /\d{4}/.test(raw))) {
+      if (currentJob) {
+        currentSec.jobs.push(currentJob);
+      }
+      const jobLine = raw.replace(/^###\s+/, "").replace(/\*\*/g, "").trim();
+      currentJob = { header: jobLine, bullets: [] };
+      continue;
+    }
+
+    // Bullets or Content
+    if (raw.startsWith("- ") || raw.startsWith("* ") || raw.startsWith("• ")) {
+      const bullet = raw.replace(/^[-*•]\s+/, "").replace(/\*\*(.*?)\*\*/g, "$1").trim();
+      if (currentJob) {
+        currentJob.bullets.push(bullet);
+      } else {
+        currentSec.bullets.push(bullet);
+      }
+    } else {
+      if (currentJob) {
+        currentJob.bullets.push(raw.replace(/\*\*(.*?)\*\*/g, "$1"));
+      } else {
+        currentSec.text.push(raw);
+      }
+    }
+  }
+
+  if (currentJob && currentSec) currentSec.jobs.push(currentJob);
+  if (currentSec) sections.push(currentSec);
+
+  // Render HTML
+  let html = `<div class="cv-paper">`;
+  html += `<div class="cv-paper-header">`;
+  html += `<h1 class="cv-name">${name}</h1>`;
+  if (contacts.length > 0) {
+    html += `<div class="cv-contacts-bar">${contacts.join(" • ")}</div>`;
+  }
+  html += `</div>`;
+
+  sections.forEach(sec => {
+    html += `<div class="cv-preview-sec">`;
+    html += `<h3 class="cv-preview-heading">${sec.title}</h3>`;
+
+    if (sec.isSkills) {
+      html += `<div class="cv-skills-pills">`;
+      const allText = sec.text.concat(sec.bullets).join(", ");
+      const rawSkills = allText.replace(/\*\*[^*]+\*\*:\s*/g, "").split(/[,;•|]/);
+      rawSkills.map(s => s.trim().replace(/\.$/, "")).filter(s => s && s.length < 35).forEach(s => {
+        html += `<span class="cv-skill-pill">${s}</span>`;
+      });
+      html += `</div>`;
+    } else {
+      if (sec.text.length > 0) {
+        html += `<p class="cv-summary-text">${sec.text.join(" ")}</p>`;
+      }
+      if (sec.jobs.length > 0) {
+        sec.jobs.forEach(j => {
+          html += `<div class="cv-job-block">`;
+          const parts = j.header.split("|").map(p => p.trim());
+          const title = parts[0] || j.header;
+          const comp = parts[1] ? ` | ${parts[1]}` : "";
+          const periodMatch = j.header.match(/\((.*?)\)/);
+          const period = periodMatch ? ` <span class="cv-job-period">(${periodMatch[1]})</span>` : "";
+
+          html += `<div class="cv-job-header"><span class="cv-job-title">${title}</span><span class="cv-job-company">${comp.replace(/\(.*?\)/, "")}</span>${period}</div>`;
+          if (j.bullets.length > 0) {
+            html += `<ul class="cv-job-bullets">`;
+            j.bullets.forEach(b => { html += `<li>${b}</li>`; });
+            html += `</ul>`;
+          }
+          html += `</div>`;
+        });
+      }
+      if (sec.bullets.length > 0 && sec.jobs.length === 0) {
+        html += `<ul class="cv-job-bullets">`;
+        sec.bullets.forEach(b => { html += `<li>${b}</li>`; });
+        html += `</ul>`;
+      }
+    }
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  previewBox.innerHTML = html;
 }
 
 function initManualReview() {
   const reanalyzeBtn = document.getElementById("btn-reanalyze");
-  reanalyzeBtn.addEventListener("click", async () => {
-    if (!currentSessionId) return;
+  const editor = document.getElementById("cv-editor");
+  const mdFileInput = document.getElementById("md-file-input");
+  const btnLoadTemplate = document.getElementById("btn-load-md-template");
 
-    const editor = document.getElementById("cv-editor");
+  // Tabs
+  const tabSplit = document.getElementById("tab-split");
+  const tabEditorOnly = document.getElementById("tab-editor-only");
+  const tabPreviewOnly = document.getElementById("tab-preview-only");
+  const editorLayout = document.getElementById("editor-layout");
+  const editorCol = document.getElementById("editor-column");
+  const previewCol = document.getElementById("preview-column");
+
+  tabSplit.addEventListener("click", () => {
+    setActiveTab(tabSplit);
+    editorLayout.className = "editor-layout-split";
+    editorCol.style.display = "block";
+    previewCol.style.display = "block";
+  });
+
+  tabEditorOnly.addEventListener("click", () => {
+    setActiveTab(tabEditorOnly);
+    editorLayout.className = "";
+    editorCol.style.display = "block";
+    previewCol.style.display = "none";
+  });
+
+  tabPreviewOnly.addEventListener("click", () => {
+    setActiveTab(tabPreviewOnly);
+    editorLayout.className = "";
+    editorCol.style.display = "none";
+    previewCol.style.display = "block";
+  });
+
+  function setActiveTab(btn) {
+    [tabSplit, tabEditorOnly, tabPreviewOnly].forEach((t) => t.classList.remove("active"));
+    btn.classList.add("active");
+  }
+
+  // Live preview as user types or pastes in editor!
+  let debounceTimer = null;
+  editor.addEventListener("input", () => {
+    renderMarkdownPreviewLocally(editor.value);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      // Background sync without blocking
+      syncMarkdownBackend(false);
+    }, 800);
+  });
+
+  // Load .md file directly into editor
+  mdFileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        editor.value = evt.target.result;
+        renderMarkdownPreviewLocally(editor.value);
+        syncMarkdownBackend(true);
+      };
+      reader.readAsText(file);
+    }
+  });
+
+  // Example template loader
+  btnLoadTemplate.addEventListener("click", () => {
+    editor.value = `# MARIANA COSTA SILVA
+São Paulo - SP | mariana.silva@email.com | (11) 98765-4321 | [linkedin.com/in/marianacosta](https://linkedin.com/in/marianacosta) | [github.com/marianadev](https://github.com/marianadev)
+
+## Resumo Profissional
+Engenheira de Software com 5 anos de experiência especializada em arquitetura de microsserviços, processamento de dados em tempo real e liderança técnica de equipes ágeis.
+
+## Experiência Profissional
+### Engenheira de Software Sênior | TechNova Inovações (2022 - Atual)
+- Desenvolveu e implantou plataforma de pagamentos distribuída processando mais de 100.000 transações diárias.
+- Otimizou consultas PostgreSQL e rotinas Redis, reduzindo a latência média de resposta em 45%.
+- Liderou equipe multidisciplinar de 7 engenheiros aplicando Scrum e práticas de CI/CD.
+
+### Desenvolvedora Back-end Pleno | SoftCloud Soluções (2019 - 2022)
+- Construiu APIs RESTful escaláveis em Python e FastAPI integradas com AWS (Lambda, S3, RDS).
+- Automatizou testes unitários e de integração, elevando a cobertura de testes de 50% para 92%.
+
+## Formação Acadêmica
+### Bacharelado em Engenharia de Software | Universidade de São Paulo (2015 - 2019)
+
+## Habilidades e Tecnologias
+- Python, FastAPI, Docker, Kubernetes, AWS, PostgreSQL, Redis, Git, CI/CD, Metodologias Ágeis, Scrum
+
+## Certificações e Cursos
+- AWS Certified Solutions Architect - Associate (2023)
+- Kubernetes CKA Certified Administrator (2024)
+
+## Idiomas
+- Inglês Avançado
+- Português Nativo`;
+    renderMarkdownPreviewLocally(editor.value);
+    syncMarkdownBackend(true);
+  });
+
+  // Re-analyze and Generate Beautiful CV
+  reanalyzeBtn.addEventListener("click", () => {
+    syncMarkdownBackend(true);
+  });
+
+  async function syncMarkdownBackend(showStatusFeedback = true) {
     const editedText = editor.value.trim();
     if (!editedText) {
-      alert("O texto do currículo não pode estar vazio.");
+      if (showStatusFeedback) alert("O texto do Markdown não pode estar vazio.");
       return;
     }
 
-    reanalyzeBtn.disabled = true;
-    reanalyzeBtn.textContent = "Reavaliando...";
+    // Immediately render local preview so there's ZERO perceived latency
+    renderMarkdownPreviewLocally(editedText);
+
+    if (showStatusFeedback) {
+      reanalyzeBtn.disabled = true;
+      reanalyzeBtn.innerHTML = `<span class="step-spinner" style="width: 14px; height: 14px;"></span> Gerando CV Bonitinho...`;
+    }
 
     try {
-      const res = await fetch("/api/manual-edit", {
+      const res = await fetch("/api/from-markdown", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: currentSessionId,
-          edited_text: editedText
+          markdown_text: editedText
         })
       });
 
       if (!res.ok) {
-        throw new Error("Erro ao salvar alterações manuais.");
+        throw new Error("Erro ao processar Markdown.");
       }
 
       const data = await res.json();
+      currentSessionId = data.session_id;
       currentPostDiagnosis = data.post_diagnosis;
       currentComparison = data.comparison;
 
-      // Dynamically update Post Inspection (D) & Comparison (E)
+      // Update preview with rich server rendering
+      if (data.preview_html) {
+        document.getElementById("cv-paper-container").innerHTML = data.preview_html;
+      }
+
+      // Dynamically update Post Inspection (D), Comparison (E), Recommendations (F), and Export (G)
       renderPostInspection(data.post_diagnosis, data.preservation);
       renderComparison(data.comparison);
       renderFinalRecommendations(data.comparison.human_recommendations);
+      setupExportLinks(currentSessionId);
 
-      const statusEl = document.getElementById("editor-status");
-      statusEl.textContent = `✔ Alterações salvas com sucesso! Nova pontuação recalculada: ${data.post_diagnosis.overall_score}/100`;
+      // Make sure Section G (Export) is visible
+      document.getElementById("section-export").classList.remove("hidden");
 
-      setTimeout(() => {
-        statusEl.textContent = "";
-      }, 5000);
+      if (showStatusFeedback) {
+        const statusEl = document.getElementById("editor-status");
+        statusEl.textContent = `✔ CV Bonitinho gerado com sucesso! Nova pontuação: ${data.post_diagnosis.overall_score}/100`;
+        setTimeout(() => {
+          statusEl.textContent = "";
+        }, 5000);
+      }
 
     } catch (err) {
-      alert(err.message);
+      if (showStatusFeedback) alert("Erro ao gerar CV: " + err.message);
     } finally {
-      reanalyzeBtn.disabled = false;
-      reanalyzeBtn.innerHTML = "🔄 Salvar e Reavaliar Pontuação";
+      if (showStatusFeedback) {
+        reanalyzeBtn.disabled = false;
+        reanalyzeBtn.innerHTML = "✨ Gerar CV Bonitinho & Reavaliar";
+      }
     }
-  });
+  }
+
+  // Initial trigger if editor already has content
+  if (editor.value.trim()) {
+    renderMarkdownPreviewLocally(editor.value);
+  }
 }
 
 // -------------------------------------------------------------

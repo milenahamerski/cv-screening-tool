@@ -34,9 +34,14 @@
         <h3>Arraste e solte seu currículo aqui</h3>
         <p class="upload-hint">Formatos suportados: <strong>PDF</strong> ou <strong>DOCX</strong> (o arquivo original é 100% preservado sem alterações)</p>
         <input type="file" id="file-input" accept=".pdf,.docx" style="display: none;">
-        <button type="button" class="btn-secondary" style="margin-top: 14px;" onclick="document.getElementById('file-input').click()">
-          Selecionar arquivo no computador
-        </button>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" onclick="document.getElementById('file-input').click()">
+            📁 Selecionar arquivo no computador
+          </button>
+          <button type="button" class="btn-secondary" id="btn-open-markdown-mode">
+            📝 Ou colar diretamente em Markdown (MD)
+          </button>
+        </div>
       </div>
 
       <div class="file-info-bar hidden" id="file-info-bar">
@@ -253,22 +258,55 @@
           <span class="section-letter">H</span>
           <h2 class="section-title">Revisão manual</h2>
         </div>
+        <span class="badge-ats">Suporta Markdown (MD)</span>
       </div>
 
       <div class="editor-toolbar">
         <div>
-          <strong>Edite o conteúdo otimizado diretamente abaixo:</strong>
+          <strong>Edite ou cole seu Markdown (MD) para gerar o CV formatado:</strong>
           <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Suas alterações manuais serão preservadas e refletidas nos arquivos finais de exportação.
+            Cole diretamente cabeçalhos (<code># Nome</code>, <code>## Experiência</code>), marcadores e links. O sistema gera automaticamente o layout profissional e preserva suas alterações na exportação.
           </p>
         </div>
-        <button class="btn-reanalyze" id="btn-reanalyze">
-          🔄 Salvar e Reavaliar Pontuação
-        </button>
+
+        <div class="editor-actions-row">
+          <input type="file" id="md-file-input" accept=".md,.txt" style="display: none;">
+          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="document.getElementById('md-file-input').click()">
+            📂 Carregar .MD
+          </button>
+          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-load-md-template">
+            📋 Exemplo MD
+          </button>
+          <button class="btn-reanalyze" id="btn-reanalyze">
+            ✨ Gerar CV Bonitinho & Reavaliar
+          </button>
+        </div>
       </div>
 
-      <textarea class="editor-textarea" id="cv-editor" spellcheck="false" placeholder="Conteúdo estruturado do currículo otimizado..."></textarea>
-      <div id="editor-status" style="font-size: 0.85rem; margin-top: 6px; color: var(--success); font-weight: 600;"></div>
+      <!-- Tabs de visualização -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="editor-tabs">
+          <button type="button" class="tab-btn active" id="tab-split">⚡ Lado a Lado (Editor & Prévia)</button>
+          <button type="button" class="tab-btn" id="tab-editor-only">✏️ Somente Editor MD</button>
+          <button type="button" class="tab-btn" id="tab-preview-only">👁️ Somente Prévia do CV</button>
+        </div>
+        <div id="editor-status" style="font-size: 0.85rem; color: var(--success); font-weight: 600;"></div>
+      </div>
+
+      <!-- Container Split / Tab -->
+      <div class="editor-layout-split" id="editor-layout">
+        <div id="editor-column">
+          <textarea class="editor-textarea" id="cv-editor" spellcheck="false" placeholder="# Seu Nome Completo&#10;São Paulo - SP | seu.email@email.com | (11) 98765-4321&#10;&#10;## Resumo Profissional&#10;Profissional qualificado com experiência em...&#10;&#10;## Experiência Profissional&#10;### Cargo | Empresa (2021 - 2024)&#10;- Desenvolveu soluções eficientes gerando 25% de ganho...&#10;&#10;## Formação Acadêmica&#10;### Bacharelado em Ciência da Computação | USP (2016 - 2020)&#10;&#10;## Habilidades e Tecnologias&#10;- Python, SQL, Docker, Metodologias Ágeis"></textarea>
+        </div>
+        <div id="preview-column">
+          <div class="cv-paper-container" id="cv-paper-container">
+            <!-- Injetado dinamicamente via preview_html -->
+            <div style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+              Carregando prévia visual do CV...
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ==========================================

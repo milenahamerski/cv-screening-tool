@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.extractor import DocumentExtractor
 from app.analyzer import ResumeAnalyzer
 from app.optimizer import ResumeOptimizer
+from app.markdown_parser import MarkdownResumeParser
 from app.preservation_validator import PreservationValidator
 from app.comparer import ResumeComparer
 from app.exporter import DocumentExporter
@@ -37,7 +38,7 @@ sessions: Dict[str, Dict[str, Any]] = {}
 
 
 class ManualEditRequest(BaseModel):
-    session_id: str
+    session_id: Optional[str] = None
     edited_text: str
     structured_data: Optional[Dict[str, Any]] = None
 
@@ -107,6 +108,8 @@ async def optimize_resume(payload: Dict[str, str]):
 
     # 1. Optimize without hallucinating facts
     structured, opt_text, steps = ResumeOptimizer.optimize(original_text, filename)
+    opt_markdown = ResumeOptimizer.render_to_markdown(structured)
+    preview_html = DocumentExporter.generate_preview_html(structured)
 
     # 2. Re-inspect with EXACT SAME rules & criteria
     post_diagnosis = ResumeAnalyzer.analyze(opt_text, filename)
@@ -120,6 +123,7 @@ async def optimize_resume(payload: Dict[str, str]):
     # Save to session
     sess["optimized_structured"] = structured
     sess["optimized_text"] = opt_text
+    sess["optimized_markdown"] = opt_markdown
     sess["post_diagnosis"] = post_diagnosis
     sess["comparison"] = comparison
     sess["preservation"] = preservation
@@ -130,7 +134,66 @@ async def optimize_resume(payload: Dict[str, str]):
         "steps": [s.model_dump() for s in steps],
         "optimized_structured": structured.model_dump(),
         "optimized_text": opt_text,
+        "optimized_markdown": opt_markdown,
+        "preview_html": preview_html,
         "post_diagnosis": post_diagnosis.model_dump(),
+        "comparison": comparison.model_dump(),
+        "preservation": preservation.model_dump()
+    }
+
+
+@app.post("/api/from-markdown")
+async def from_markdown(payload: Dict[str, str]):
+    """Creates or updates a session directly from pasted Markdown and generates the beautiful CV."""
+    markdown_text = payload.get("markdown_text", "").strip()
+    if not markdown_text:
+        raise HTTPException(status_code=400, detail="O texto em Markdown não pode estar vazio.")
+
+    session_id = payload.get("session_id")
+    if not session_id or session_id not in sessions:
+        session_id = str(uuid.uuid4())
+        sessions[session_id] = {
+            "session_id": session_id,
+            "original_bytes": markdown_text.encode("utf-8"),
+            "filename": "curriculo_markdown.md",
+            "format": "MD",
+            "raw_text": markdown_text,
+            "pages_count": 1,
+            "initial_diagnosis": None,
+            "optimized_structured": None,
+            "optimized_text": None,
+            "post_diagnosis": None,
+            "comparison": None,
+            "preservation": None,
+            "steps": []
+        }
+
+    sess = sessions[session_id]
+    structured = MarkdownResumeParser.parse(markdown_text)
+    opt_text = ResumeOptimizer.render_to_text(structured)
+    opt_markdown = ResumeOptimizer.render_to_markdown(structured)
+    preview_html = DocumentExporter.generate_preview_html(structured)
+
+    diagnosis = ResumeAnalyzer.analyze(opt_text, sess["filename"])
+    if not sess.get("initial_diagnosis"):
+        sess["initial_diagnosis"] = diagnosis
+
+    preservation = PreservationValidator.validate_preservation(sess["raw_text"], opt_text)
+    comparison = ResumeComparer.compare(sess["initial_diagnosis"], diagnosis)
+
+    sess["optimized_structured"] = structured
+    sess["optimized_text"] = opt_text
+    sess["optimized_markdown"] = opt_markdown
+    sess["post_diagnosis"] = diagnosis
+    sess["comparison"] = comparison
+    sess["preservation"] = preservation
+
+    return {
+        "session_id": session_id,
+        "preview_html": preview_html,
+        "optimized_text": opt_text,
+        "optimized_markdown": opt_markdown,
+        "post_diagnosis": diagnosis.model_dump(),
         "comparison": comparison.model_dump(),
         "preservation": preservation.model_dump()
     }
@@ -138,31 +201,59 @@ async def optimize_resume(payload: Dict[str, str]):
 
 @app.post("/api/manual-edit")
 async def manual_edit_resume(req: ManualEditRequest):
-    """Updates the optimized resume with user edits and recalculates inspection scores."""
-    if req.session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Sessão não encontrada.")
-
-    sess = sessions[req.session_id]
-    updated_text = req.edited_text.strip()
-    if not updated_text:
+    """Updates the optimized resume with user edits (plain text or Markdown) and recalculates inspection scores."""
+    updated_input = req.edited_text.strip()
+    if not updated_input:
         raise HTTPException(status_code=400, detail="O texto editado não pode estar vazio.")
 
-    sess["optimized_text"] = updated_text
+    session_id = req.session_id
+    if not session_id or session_id not in sessions:
+        session_id = str(uuid.uuid4())
+        sessions[session_id] = {
+            "session_id": session_id,
+            "original_bytes": updated_input.encode("utf-8"),
+            "filename": "curriculo_editado.md",
+            "format": "MD",
+            "raw_text": updated_input,
+            "pages_count": 1,
+            "initial_diagnosis": None,
+            "optimized_structured": None,
+            "optimized_text": None,
+            "post_diagnosis": None,
+            "comparison": None,
+            "preservation": None,
+            "steps": []
+        }
 
-    # Re-structure from updated text so that DOCX and PDF exports strictly reflect user edits
+    sess = sessions[session_id]
+
+    # Detect if user pasted Markdown (starts with # or contains ## or markdown links/bullets)
+    is_markdown = "#" in updated_input or "**" in updated_input or "- " in updated_input
+
     if req.structured_data:
         try:
-            sess["optimized_structured"] = ResumeStructured(**req.structured_data)
+            structured = ResumeStructured(**req.structured_data)
         except Exception:
-            struct, _, _ = ResumeOptimizer.optimize(updated_text, sess["filename"])
-            sess["optimized_structured"] = struct
+            structured = MarkdownResumeParser.parse(updated_input)
+    elif is_markdown:
+        structured = MarkdownResumeParser.parse(updated_input)
     else:
-        struct, _, _ = ResumeOptimizer.optimize(updated_text, sess["filename"])
-        sess["optimized_structured"] = struct
+        structured, _, _ = ResumeOptimizer.optimize(updated_input, sess["filename"])
+
+    opt_text = ResumeOptimizer.render_to_text(structured)
+    opt_markdown = ResumeOptimizer.render_to_markdown(structured)
+    preview_html = DocumentExporter.generate_preview_html(structured)
+
+    sess["optimized_structured"] = structured
+    sess["optimized_text"] = opt_text
+    sess["optimized_markdown"] = opt_markdown
 
     # Re-inspect edited version with exact same rules
-    post_diagnosis = ResumeAnalyzer.analyze(updated_text, sess["filename"])
-    preservation = PreservationValidator.validate_preservation(sess["raw_text"], updated_text)
+    post_diagnosis = ResumeAnalyzer.analyze(opt_text, sess["filename"])
+    if not sess.get("initial_diagnosis"):
+        sess["initial_diagnosis"] = post_diagnosis
+
+    preservation = PreservationValidator.validate_preservation(sess["raw_text"], opt_text)
     comparison = ResumeComparer.compare(sess["initial_diagnosis"], post_diagnosis)
 
     sess["post_diagnosis"] = post_diagnosis
@@ -170,7 +261,10 @@ async def manual_edit_resume(req: ManualEditRequest):
     sess["comparison"] = comparison
 
     return {
-        "session_id": req.session_id,
+        "session_id": session_id,
+        "optimized_text": opt_text,
+        "optimized_markdown": opt_markdown,
+        "preview_html": preview_html,
         "post_diagnosis": post_diagnosis.model_dump(),
         "comparison": comparison.model_dump(),
         "preservation": preservation.model_dump()

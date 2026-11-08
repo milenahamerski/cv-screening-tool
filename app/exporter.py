@@ -1,12 +1,12 @@
-"""Document Exporter for DOCX, PDF, and Comparison Reports."""
+"""Document Exporter for DOCX, PDF, and Comparison Reports with refined styling."""
 
 import io
 from typing import Dict, Any, List
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import nsdecls, qn
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -17,7 +17,7 @@ from app.models import ResumeStructured, ComparisonResult, DiagnosisResult
 
 
 class DocumentExporter:
-    """Generates professional, ATS-compliant DOCX and PDF documents."""
+    """Generates professional, aesthetically polished ('bonitinho'), ATS-compliant DOCX and PDF documents."""
 
     # -------------------------------------------------------------
     # 1. OPTIMIZED RESUME IN DOCX (Single-column, fully editable)
@@ -26,31 +26,31 @@ class DocumentExporter:
     def generate_resume_docx(cls, resume: ResumeStructured) -> bytes:
         doc = Document()
 
-        # Set single-column standard 1 inch (2.54 cm) margins
+        # Set single-column standard 0.8 inch margins
         for section in doc.sections:
-            section.top_margin = Inches(0.8)
-            section.bottom_margin = Inches(0.8)
+            section.top_margin = Inches(0.75)
+            section.bottom_margin = Inches(0.75)
             section.left_margin = Inches(0.8)
             section.right_margin = Inches(0.8)
             section.page_width = Inches(8.5)
             section.page_height = Inches(11.0)
 
-        # Base style: Calibri, 10.5 pt, clean line spacing
+        # Base style: Calibri, 10 pt, clean line spacing
         normal_style = doc.styles["Normal"]
         normal_style.font.name = "Calibri"
-        normal_style.font.size = Pt(10.5)
-        normal_style.font.color.rgb = RGBColor(0x22, 0x22, 0x22)
+        normal_style.font.size = Pt(10)
+        normal_style.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
 
         # Header / Name
         name_p = doc.add_paragraph()
         name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         name_p.paragraph_format.space_before = Pt(0)
-        name_p.paragraph_format.space_after = Pt(4)
+        name_p.paragraph_format.space_after = Pt(2)
         name_str = (resume.contact.name or "CURRÍCULO PROFISSIONAL").upper()
         run_name = name_p.add_run(name_str)
         run_name.bold = True
-        run_name.font.size = Pt(20)
-        run_name.font.color.rgb = RGBColor(0x11, 0x18, 0x27)
+        run_name.font.size = Pt(18)
+        run_name.font.color.rgb = RGBColor(0x0F, 0x2C, 0x59)
 
         # Contact line
         contact_items = []
@@ -68,53 +68,54 @@ class DocumentExporter:
         if contact_items:
             cont_p = doc.add_paragraph()
             cont_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            cont_p.paragraph_format.space_after = Pt(14)
-            run_cont = cont_p.add_run("  |  ".join(contact_items))
-            run_cont.font.size = Pt(9.5)
+            cont_p.paragraph_format.space_after = Pt(12)
+            run_cont = cont_p.add_run("  •  ".join(contact_items))
+            run_cont.font.size = Pt(9)
             run_cont.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
 
-        # Helper for adding section headings with standard ATS formatting
+        # Helper for adding section headings with stylish bottom border
         def add_heading(title: str):
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(12)
+            p.paragraph_format.space_before = Pt(10)
             p.paragraph_format.space_after = Pt(4)
             p.paragraph_format.keep_with_next = True
             run = p.add_run(title.upper())
             run.bold = True
-            run.font.size = Pt(12)
+            run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x0F, 0x2C, 0x59)
 
-            # Add a clean bottom border or divider line under the heading
+            # Add clean horizontal divider under heading
             pPr = p._element.get_or_add_pPr()
-            pBdr = parse_xml(f'<w:pBdr {nsdecls("w")}><w:bottom w:val="single" w:sz="8" w:space="2" w:color="0F2C59"/></w:pBdr>')
+            pBdr = parse_xml(f'<w:pBdr {nsdecls("w")}><w:bottom w:val="single" w:sz="6" w:space="2" w:color="0F2C59"/></w:pBdr>')
             pPr.append(pBdr)
 
         # Resumo Profissional
         if resume.summary:
             add_heading("Resumo Profissional")
             sum_p = doc.add_paragraph()
-            sum_p.paragraph_format.space_after = Pt(8)
+            sum_p.paragraph_format.space_after = Pt(6)
             sum_p.paragraph_format.line_spacing = 1.15
             run_sum = sum_p.add_run(resume.summary)
-            run_sum.font.size = Pt(10)
+            run_sum.font.size = Pt(9.5)
 
         # Experiência Profissional
         if resume.experiences:
             add_heading("Experiência Profissional")
             for exp in resume.experiences:
                 job_p = doc.add_paragraph()
-                job_p.paragraph_format.space_before = Pt(6)
-                job_p.paragraph_format.space_after = Pt(2)
+                job_p.paragraph_format.space_before = Pt(5)
+                job_p.paragraph_format.space_after = Pt(1)
                 job_p.paragraph_format.keep_with_next = True
 
                 title_run = job_p.add_run(exp.title or "Cargo")
                 title_run.bold = True
-                title_run.font.size = Pt(10.5)
+                title_run.font.size = Pt(10)
+                title_run.font.color.rgb = RGBColor(0x11, 0x18, 0x27)
 
                 if exp.company:
                     comp_run = job_p.add_run(f" | {exp.company}")
                     comp_run.bold = True
-                    comp_run.font.color.rgb = RGBColor(0x37, 0x41, 0x51)
+                    comp_run.font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
 
                 if exp.period:
                     per_run = job_p.add_run(f"  ({exp.period})")
@@ -127,7 +128,7 @@ class DocumentExporter:
                     bp.paragraph_format.space_after = Pt(2)
                     bp.paragraph_format.line_spacing = 1.1
                     brun = bp.add_run(b)
-                    brun.font.size = Pt(10)
+                    brun.font.size = Pt(9.5)
 
         # Formação Acadêmica
         if resume.education:
@@ -139,7 +140,7 @@ class DocumentExporter:
 
                 d_run = edu_p.add_run(edu.degree or "Curso")
                 d_run.bold = True
-                d_run.font.size = Pt(10.5)
+                d_run.font.size = Pt(10)
 
                 if edu.institution:
                     i_run = edu_p.add_run(f" | {edu.institution}")
@@ -156,7 +157,7 @@ class DocumentExporter:
             sk_p = doc.add_paragraph()
             sk_p.paragraph_format.space_after = Pt(6)
             sk_run = sk_p.add_run(" • ".join(resume.skills))
-            sk_run.font.size = Pt(10)
+            sk_run.font.size = Pt(9.5)
 
         # Certificações e Cursos
         if resume.certifications:
@@ -166,15 +167,15 @@ class DocumentExporter:
                 cp.paragraph_format.space_before = Pt(1)
                 cp.paragraph_format.space_after = Pt(2)
                 c_run = cp.add_run(cert)
-                c_run.font.size = Pt(10)
+                c_run.font.size = Pt(9.5)
 
         # Idiomas
         if resume.languages:
             add_heading("Idiomas")
             lang_p = doc.add_paragraph()
             lang_p.paragraph_format.space_after = Pt(6)
-            lang_run = lang_p.add_run("  |  ".join(resume.languages))
-            lang_run.font.size = Pt(10)
+            lang_run = lang_p.add_run("  •  ".join(resume.languages))
+            lang_run.font.size = Pt(9.5)
 
         buf = io.BytesIO()
         doc.save(buf)
@@ -189,10 +190,10 @@ class DocumentExporter:
         doc = SimpleDocTemplate(
             buf,
             pagesize=letter,
-            leftMargin=40,
-            rightMargin=40,
-            topMargin=40,
-            bottomMargin=40
+            leftMargin=38,
+            rightMargin=38,
+            topMargin=36,
+            bottomMargin=36
         )
 
         styles = getSampleStyleSheet()
@@ -201,8 +202,8 @@ class DocumentExporter:
             "NameStyle",
             parent=styles["Normal"],
             fontName="Helvetica-Bold",
-            fontSize=18,
-            leading=22,
+            fontSize=17,
+            leading=21,
             alignment=1,  # Center
             textColor=colors.HexColor("#0f2c59")
         )
@@ -211,8 +212,8 @@ class DocumentExporter:
             "ContactStyle",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=9,
-            leading=13,
+            fontSize=8.5,
+            leading=12,
             alignment=1,  # Center
             textColor=colors.HexColor("#4b5563")
         )
@@ -221,31 +222,31 @@ class DocumentExporter:
             "SectionHeading",
             parent=styles["Heading2"],
             fontName="Helvetica-Bold",
-            fontSize=11,
-            leading=14,
+            fontSize=10.5,
+            leading=13,
             textColor=colors.HexColor("#0f2c59"),
-            spaceBefore=10,
-            spaceAfter=4
+            spaceBefore=8,
+            spaceAfter=2
         )
 
         body_style = ParagraphStyle(
             "Body",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=9.5,
-            leading=13,
-            textColor=colors.HexColor("#222222")
+            fontSize=9,
+            leading=12.5,
+            textColor=colors.HexColor("#1f2937")
         )
 
         bullet_style = ParagraphStyle(
             "Bullet",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=9,
-            leading=13,
-            leftIndent=14,
-            firstLineIndent=-10,
-            textColor=colors.HexColor("#222222")
+            fontSize=8.5,
+            leading=12,
+            leftIndent=12,
+            firstLineIndent=-8,
+            textColor=colors.HexColor("#1f2937")
         )
 
         story = []
@@ -253,7 +254,7 @@ class DocumentExporter:
         # Header: Name
         name_text = (resume.contact.name or "CURRÍCULO PROFISSIONAL").upper()
         story.append(Paragraph(name_text, name_style))
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 3))
 
         # Contact Info
         contact_items = []
@@ -269,21 +270,20 @@ class DocumentExporter:
             contact_items.append(resume.contact.github)
 
         if contact_items:
-            story.append(Paragraph(" &nbsp;|&nbsp; ".join(contact_items), contact_style))
-            story.append(Spacer(1, 8))
+            story.append(Paragraph(" &nbsp;•&nbsp; ".join(contact_items), contact_style))
+            story.append(Spacer(1, 6))
 
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cbd5e1"), spaceAfter=8))
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cbd5e1"), spaceAfter=6))
 
-        # Helper for headings
         def add_pdf_heading(title: str):
             story.append(Paragraph(title.upper(), heading_style))
-            story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0f2c59"), spaceAfter=6))
+            story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0f2c59"), spaceAfter=5))
 
         # Summary
         if resume.summary:
             add_pdf_heading("Resumo Profissional")
             story.append(Paragraph(resume.summary, body_style))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
 
         # Experience
         if resume.experiences:
@@ -291,16 +291,16 @@ class DocumentExporter:
             for exp in resume.experiences:
                 exp_header = f"<b>{exp.title or 'Cargo'}</b>"
                 if exp.company:
-                    exp_header += f" &nbsp;|&nbsp; <b>{exp.company}</b>"
+                    exp_header += f" &nbsp;|&nbsp; <font color='#1e40af'><b>{exp.company}</b></font>"
                 if exp.period:
-                    exp_header += f" &nbsp;<i>({exp.period})</i>"
+                    exp_header += f" &nbsp;<i><font color='#64748b'>({exp.period})</font></i>"
                 story.append(Paragraph(exp_header, body_style))
                 story.append(Spacer(1, 2))
 
                 for b in exp.bullets:
                     story.append(Paragraph(f"• {b}", bullet_style))
-                    story.append(Spacer(1, 1.5))
-                story.append(Spacer(1, 4))
+                    story.append(Spacer(1, 1))
+                story.append(Spacer(1, 3))
 
         # Education
         if resume.education:
@@ -310,34 +310,128 @@ class DocumentExporter:
                 if edu.institution:
                     edu_line += f" &nbsp;|&nbsp; {edu.institution}"
                 if edu.period:
-                    edu_line += f" &nbsp;<i>({edu.period})</i>"
+                    edu_line += f" &nbsp;<i><font color='#64748b'>({edu.period})</font></i>"
                 story.append(Paragraph(edu_line, body_style))
-                story.append(Spacer(1, 3))
+                story.append(Spacer(1, 2))
 
         # Skills
         if resume.skills:
             add_pdf_heading("Habilidades e Tecnologias")
             skills_line = " &nbsp;•&nbsp; ".join(resume.skills)
             story.append(Paragraph(skills_line, body_style))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
 
         # Certifications
         if resume.certifications:
             add_pdf_heading("Certificações e Cursos")
             for cert in resume.certifications:
                 story.append(Paragraph(f"• {cert}", bullet_style))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
 
         # Languages
         if resume.languages:
             add_pdf_heading("Idiomas")
-            story.append(Paragraph(" &nbsp;|&nbsp; ".join(resume.languages), body_style))
+            story.append(Paragraph(" &nbsp;•&nbsp; ".join(resume.languages), body_style))
 
         doc.build(story)
         return buf.getvalue()
 
     # -------------------------------------------------------------
-    # 3. COMPARISON AUDIT REPORT (PDF)
+    # 3. LIVE BEAUTIFUL HTML PREVIEW ("CV Bonitinho")
+    # -------------------------------------------------------------
+    @classmethod
+    def generate_preview_html(cls, resume: ResumeStructured) -> str:
+        """Renders an elegant, realistic A4-style interactive HTML CV preview."""
+        name = (resume.contact.name or "SEU NOME COMPLETO").upper()
+        
+        contacts = []
+        if resume.contact.location:
+            contacts.append(f"<span>📍 {resume.contact.location}</span>")
+        if resume.contact.phone:
+            contacts.append(f"<span>📞 {resume.contact.phone}</span>")
+        if resume.contact.email:
+            contacts.append(f"<span>✉️ {resume.contact.email}</span>")
+        if resume.contact.linkedin:
+            contacts.append(f"<span>🔗 {resume.contact.linkedin}</span>")
+        if resume.contact.github:
+            contacts.append(f"<span>💻 {resume.contact.github}</span>")
+
+        exp_html = ""
+        if resume.experiences:
+            exp_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>EXPERIÊNCIA PROFISSIONAL</h3>"
+            for exp in resume.experiences:
+                exp_html += "<div class='cv-job-block'>"
+                exp_html += "<div class='cv-job-header'>"
+                exp_html += f"<span class='cv-job-title'>{exp.title}</span>"
+                if exp.company:
+                    exp_html += f" <span class='cv-job-company'>| {exp.company}</span>"
+                if exp.period:
+                    exp_html += f"<span class='cv-job-period'>({exp.period})</span>"
+                exp_html += "</div>"
+                if exp.bullets:
+                    exp_html += "<ul class='cv-job-bullets'>"
+                    for b in exp.bullets:
+                        exp_html += f"<li>{b}</li>"
+                    exp_html += "</ul>"
+                exp_html += "</div>"
+            exp_html += "</div>"
+
+        edu_html = ""
+        if resume.education:
+            edu_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>FORMAÇÃO ACADÊMICA</h3>"
+            for edu in resume.education:
+                edu_html += "<div class='cv-edu-item'>"
+                edu_html += f"<strong>{edu.degree}</strong>"
+                if edu.institution:
+                    edu_html += f" | {edu.institution}"
+                if edu.period:
+                    edu_html += f" <span class='cv-job-period'>({edu.period})</span>"
+                edu_html += "</div>"
+            edu_html += "</div>"
+
+        skills_html = ""
+        if resume.skills:
+            skills_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>HABILIDADES E TECNOLOGIAS</h3>"
+            skills_html += "<div class='cv-skills-pills'>"
+            for s in resume.skills:
+                skills_html += f"<span class='cv-skill-pill'>{s}</span>"
+            skills_html += "</div></div>"
+
+        certs_html = ""
+        if resume.certifications:
+            certs_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>CERTIFICAÇÕES E CURSOS</h3><ul class='cv-job-bullets'>"
+            for c in resume.certifications:
+                certs_html += f"<li>{c}</li>"
+            certs_html += "</ul></div>"
+
+        lang_html = ""
+        if resume.languages:
+            lang_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>IDIOMAS</h3>"
+            lang_html += f"<p style='font-size: 0.9rem;'>{' • '.join(resume.languages)}</p></div>"
+
+        summary_html = ""
+        if resume.summary:
+            summary_html = f"<div class='cv-preview-sec'><h3 class='cv-preview-heading'>RESUMO PROFISSIONAL</h3><p class='cv-summary-text'>{resume.summary}</p></div>"
+
+        return f"""
+        <div class="cv-paper">
+          <div class="cv-paper-header">
+            <h1 class="cv-name">{name}</h1>
+            <div class="cv-contacts-bar">
+              {' • '.join(contacts)}
+            </div>
+          </div>
+          {summary_html}
+          {exp_html}
+          {edu_html}
+          {skills_html}
+          {certs_html}
+          {lang_html}
+        </div>
+        """
+
+    # -------------------------------------------------------------
+    # 4. COMPARISON AUDIT REPORT (PDF)
     # -------------------------------------------------------------
     @classmethod
     def generate_report_pdf(cls, comparison: ComparisonResult, initial: DiagnosisResult, post: DiagnosisResult) -> bytes:
@@ -406,7 +500,6 @@ class DocumentExporter:
         story.append(score_table)
         story.append(Spacer(1, 14))
 
-        # Disclaimer required by prompt: Not a hiring probability
         disclaimer = Paragraph(
             "<i>Nota: A pontuação reflete a conformidade técnica estrutural e textual com leitores ATS (Applicant Tracking Systems), não representando probabilidade de aprovação ou contratação.</i>",
             sub_style
@@ -477,7 +570,7 @@ class DocumentExporter:
         return buf.getvalue()
 
     # -------------------------------------------------------------
-    # 4. PENDING ACTION CHECKLIST (Markdown / TXT)
+    # 5. PENDING ACTION CHECKLIST (Markdown / TXT)
     # -------------------------------------------------------------
     @classmethod
     def generate_checklist_text(cls, comparison: ComparisonResult) -> str:

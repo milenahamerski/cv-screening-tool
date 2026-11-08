@@ -393,6 +393,90 @@ class ResumeOptimizer:
         return skills, certs, langs
 
     @classmethod
+    def render_to_markdown(cls, struct: ResumeStructured) -> str:
+        """Renders the structured resume as clean, human-friendly Markdown."""
+        lines = []
+
+        # Name
+        lines.append(f"# {struct.contact.name or 'SEU NOME COMPLETO'}")
+        
+        # Contact line
+        contact_parts = []
+        if struct.contact.location:
+            contact_parts.append(struct.contact.location)
+        if struct.contact.phone:
+            contact_parts.append(struct.contact.phone)
+        if struct.contact.email:
+            contact_parts.append(struct.contact.email)
+        if struct.contact.linkedin:
+            contact_parts.append(f"[{struct.contact.linkedin}](https://{struct.contact.linkedin.replace('https://', '')})")
+        if struct.contact.github:
+            contact_parts.append(f"[{struct.contact.github}](https://{struct.contact.github.replace('https://', '')})")
+
+        if contact_parts:
+            lines.append(" | ".join(contact_parts))
+        lines.append("")
+
+        # Summary
+        if struct.summary:
+            lines.append("## Resumo Profissional")
+            lines.append(struct.summary)
+            lines.append("")
+
+        # Experience
+        if struct.experiences:
+            lines.append("## Experiência Profissional")
+            for exp in struct.experiences:
+                exp_header = []
+                if exp.title:
+                    exp_header.append(exp.title)
+                if exp.company:
+                    exp_header.append(exp.company)
+                if exp.period:
+                    exp_header.append(f"({exp.period})")
+                lines.append(f"### {' | '.join(exp_header)}")
+
+                for b in exp.bullets:
+                    lines.append(f"- {b}")
+                lines.append("")
+
+        # Education
+        if struct.education:
+            lines.append("## Formação Acadêmica")
+            for edu in struct.education:
+                edu_parts = []
+                if edu.degree:
+                    edu_parts.append(edu.degree)
+                if edu.institution:
+                    edu_parts.append(edu.institution)
+                if edu.period:
+                    edu_parts.append(f"({edu.period})")
+                lines.append(f"### {' | '.join(edu_parts)}")
+            lines.append("")
+
+        # Skills
+        if struct.skills:
+            lines.append("## Habilidades e Tecnologias")
+            lines.append("- " + ", ".join(struct.skills))
+            lines.append("")
+
+        # Certifications
+        if struct.certifications:
+            lines.append("## Certificações e Cursos")
+            for c in struct.certifications:
+                lines.append(f"- {c}")
+            lines.append("")
+
+        # Languages
+        if struct.languages:
+            lines.append("## Idiomas")
+            for l in struct.languages:
+                lines.append(f"- {l}")
+            lines.append("")
+
+        return "\n".join(lines).strip()
+
+    @classmethod
     def render_to_text(cls, struct: ResumeStructured) -> str:
         """Renders the structured resume as clean, single-column plain text for ATS."""
         lines = []
