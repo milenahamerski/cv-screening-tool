@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CV Optimizer — Análise e otimização de currículos para ATS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header Principal -->
+    <header class="app-header">
+      <h1 class="app-title">
+        CV Optimizer
+        <span class="badge-ats">ATS Ready</span>
+      </h1>
+      <p class="app-subtitle">Análise e otimização de currículos para ATS.</p>
+    </header>
+
+    <!-- ==========================================
+         A. Upload do currículo
+         ========================================== -->
+    <section class="section-card" id="section-upload">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">A</span>
+          <h2 class="section-title">Upload do currículo</h2>
+        </div>
+      </div>
+
+      <div class="upload-dropzone" id="dropzone">
+        <span class="upload-icon">📄</span>
+        <h3>Arraste e solte seu currículo aqui</h3>
+        <p class="upload-hint">Formatos suportados: <strong>PDF</strong> ou <strong>DOCX</strong> (o arquivo original é 100% preservado sem alterações)</p>
+        <input type="file" id="file-input" accept=".pdf,.docx" style="display: none;">
+        <button type="button" class="btn-secondary" style="margin-top: 14px;" onclick="document.getElementById('file-input').click()">
+          Selecionar arquivo no computador
+        </button>
+      </div>
+
+      <div class="file-info-bar hidden" id="file-info-bar">
+        <div class="file-meta">
+          <span class="file-format-badge" id="file-format-badge">PDF</span>
+          <strong id="file-name-display">curriculo.pdf</strong>
+          <span id="file-stats-display" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+        </div>
+        <button type="button" class="btn-secondary" onclick="document.getElementById('file-input').click()">
+          🔄 Substituir documento
+        </button>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         B. Diagnóstico inicial
+         ========================================== -->
+    <section class="section-card hidden" id="section-diagnosis">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">B</span>
+          <h2 class="section-title">Diagnóstico inicial</h2>
+        </div>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Critérios objetivos e documentados</span>
+      </div>
+
+      <!-- Visão Geral: Pontuação e Barra -->
+      <div class="diagnosis-overview">
+        <div class="score-circle-wrap">
+          <div class="score-big" id="init-score-val">0</div>
+          <div class="score-label">Pontuação Geral (0 a 100)</div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.95rem;">
+            <span>Conformidade Técnica ATS</span>
+            <span id="init-score-percent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="init-progress-fill" style="width: 0%; background-color: var(--warning);"></div>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
+            A pontuação avalia objetivamente a legibilidade por parsers, convenção de títulos, métricas concretas e completude de dados.
+          </p>
+        </div>
+      </div>
+
+      <!-- Critérios Individuais -->
+      <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--primary);">Pontuação Individual por Critério</h3>
+      <div class="criteria-grid" id="init-criteria-grid">
+        <!-- Injetado dinamicamente via JS -->
+      </div>
+
+      <!-- Feedback Columns -->
+      <div class="feedback-columns">
+        <div class="feedback-box issues">
+          <h4 class="feedback-title" style="color: var(--danger);">⚠️ Principais Problemas Identificados</h4>
+          <ul class="feedback-list" id="init-issues-list"></ul>
+        </div>
+        <div class="feedback-box positives">
+          <h4 class="feedback-title" style="color: var(--success);">✅ Pontos Positivos do Documento</h4>
+          <ul class="feedback-list" id="init-positives-list"></ul>
+        </div>
+        <div class="feedback-box recs">
+          <h4 class="feedback-title" style="color: var(--warning);">💡 Recomendações Iniciais</h4>
+          <ul class="feedback-list" id="init-recs-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         C. Botão principal: Melhorar CV
+         ========================================== -->
+    <section class="cta-container hidden" id="section-cta">
+      <h2 class="cta-title">Otimização Automatizada Baseada na Fonte da Verdade</h2>
+      <p class="cta-desc">
+        Reorganiza a estrutura para padrões ATS, melhora a escrita com verbos de ação e destaca seus resultados reais sem inventar nenhuma informação profissional.
+      </p>
+      <button class="btn-optimize-main" id="btn-improve-cv">
+        <span>✨ Melhorar CV</span>
+      </button>
+
+      <!-- Painel de Etapas Reais de Progresso -->
+      <div class="steps-container" id="steps-container">
+        <div style="font-weight: 700; margin-bottom: 12px; color: #fff; font-size: 1rem;">
+          Progresso Real da Otimização:
+        </div>
+        <div id="steps-list">
+          <!-- Injetado via JS com etapas reais -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         D. Inspeção posterior à otimização
+         ========================================== -->
+    <section class="section-card hidden" id="section-post-inspection">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">D</span>
+          <h2 class="section-title">Inspeção posterior à otimização</h2>
+        </div>
+        <span class="badge-ats">Mesmos critérios e regras aplicados</span>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 8px;">
+          Validações Técnicas Executadas:
+        </h4>
+        <ul style="font-size: 0.9rem; padding-left: 20px; color: var(--text-main);" id="post-checks-list">
+          <li>✔ <strong>Legibilidade por extração textual:</strong> Texto limpo em coluna única sem blocos truncados.</li>
+          <li>✔ <strong>Estrutura convencional:</strong> Títulos universais (Resumo, Experiência, Formação, Habilidades).</li>
+          <li>✔ <strong>Distribuição de palavras-chave:</strong> Competências sustentadas organizadas em seção específica.</li>
+          <li>✔ <strong>Clareza nas experiências:</strong> Formato em marcadores iniciado por verbos de ação diretos.</li>
+          <li id="preservation-check-bullet">✔ <strong>Preservação estrita:</strong> Datas, cargos, empresas e formações do original foram 100% mantidos.</li>
+          <li>✔ <strong>Integridade factual:</strong> Nenhuma informação ou número fictício foi inserido.</li>
+        </ul>
+      </div>
+
+      <!-- Critérios da Nova Versão -->
+      <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--primary);">Pontuação Detalhada da Nova Versão</h3>
+      <div class="criteria-grid" id="post-criteria-grid">
+        <!-- Injetado dinamicamente via JS -->
+      </div>
+    </section>
+
+    <!-- ==========================================
+         E. Comparação antes e depois
+         ========================================== -->
+    <section class="section-card hidden" id="section-comparison">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">E</span>
+          <h2 class="section-title">Comparação antes e depois</h2>
+        </div>
+      </div>
+
+      <!-- Hero com Notas e Diferença Absoluta -->
+      <div class="comparison-hero">
+        <div class="comp-metric-box">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Nota Original</div>
+          <div class="comp-metric-num" style="color: #64748b;" id="comp-score-before">0</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Diagnóstico inicial</div>
+        </div>
+        <div class="comp-metric-box" style="border-color: #86efac; background: #f0fdf4;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--success); text-transform: uppercase;">Nota Otimizada</div>
+          <div class="comp-metric-num" style="color: var(--success);" id="comp-score-after">0</div>
+          <div style="font-size: 0.8rem; color: #166534;">Inspeção técnica</div>
+        </div>
+        <div class="comp-metric-box" style="border-color: #93c5fd; background: #eff6ff;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent); text-transform: uppercase;">Diferença Absoluta</div>
+          <div class="comp-metric-num" style="color: var(--accent);" id="comp-score-delta">+0 pts</div>
+          <div style="font-size: 0.8rem; color: #1e40af;">Ganho em pontos reais</div>
+        </div>
+      </div>
+
+      <!-- Tabela Comparativa de Critérios -->
+      <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--primary);">Comparação por Critério de Avaliação</h3>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Critério</th>
+            <th>Antes</th>
+            <th>Depois</th>
+            <th>Diferença</th>
+            <th>Progresso</th>
+          </tr>
+        </thead>
+        <tbody id="comp-table-body">
+          <!-- Injetado dinamicamente -->
+        </tbody>
+      </table>
+
+      <!-- Resolução de Problemas -->
+      <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--primary);">Status de Resolução dos Problemas</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px;" id="comp-issues-resolution">
+        <!-- Injetado dinamicamente -->
+      </div>
+
+      <div class="disclaimer-banner">
+        <span>ℹ️</span>
+        <div>
+          <strong>Aviso de Transparência Técnica:</strong> A pontuação reflete exclusivamente a conformidade estrutural, vocabular e textual do documento para leitores de triagem ATS, e <strong>não</strong> representa probabilidade de contratação ou aprovação em processos seletivos.
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         F. Recomendações finais (Ação Humana)
+         ========================================== -->
+    <section class="section-card hidden" id="section-recommendations">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">F</span>
+          <h2 class="section-title">Recomendações finais</h2>
+        </div>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Dependem de intervenção humana</span>
+      </div>
+
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 18px;">
+        Para preservar a autenticidade e integridade ética do seu currículo, o sistema <strong>não inventa</strong> fatos, cargos ou números. As pendências abaixo requerem sua confirmação ou preenchimento com dados reais da sua trajetória:
+      </p>
+
+      <div id="final-recs-container">
+        <!-- Injetado dinamicamente dividido por prioridade Alta, Média, Baixa -->
+      </div>
+    </section>
+
+    <!-- ==========================================
+         H. Revisão manual
+         ========================================== -->
+    <section class="section-card hidden" id="section-manual-review">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">H</span>
+          <h2 class="section-title">Revisão manual</h2>
+        </div>
+      </div>
+
+      <div class="editor-toolbar">
+        <div>
+          <strong>Edite o conteúdo otimizado diretamente abaixo:</strong>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Suas alterações manuais serão preservadas e refletidas nos arquivos finais de exportação.
+          </p>
+        </div>
+        <button class="btn-reanalyze" id="btn-reanalyze">
+          🔄 Salvar e Reavaliar Pontuação
+        </button>
+      </div>
+
+      <textarea class="editor-textarea" id="cv-editor" spellcheck="false" placeholder="Conteúdo estruturado do currículo otimizado..."></textarea>
+      <div id="editor-status" style="font-size: 0.85rem; margin-top: 6px; color: var(--success); font-weight: 600;"></div>
+    </section>
+
+    <!-- ==========================================
+         G. Exportação dos documentos
+         ========================================== -->
+    <section class="section-card hidden" id="section-export">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-letter">G</span>
+          <h2 class="section-title">Exportação dos documentos</h2>
+        </div>
+      </div>
+
+      <div class="export-grid">
+        <!-- 1. DOCX -->
+        <div class="export-card">
+          <div>
+            <div class="export-icon">📝</div>
+            <div class="export-name">Currículo em DOCX</div>
+            <div class="export-desc">Formato em coluna única, títulos padrão, 100% editável no Word e LibreOffice.</div>
+          </div>
+          <a class="btn-export" id="btn-download-docx" href="#" download>
+            ⬇️ Baixar DOCX Editável
+          </a>
+        </div>
+
+        <!-- 2. PDF -->
+        <div class="export-card">
+          <div>
+            <div class="export-icon">📄</div>
+            <div class="export-name">Currículo em PDF</div>
+            <div class="export-desc">Layout profissional limpo com texto selecionável e compatível com ATS.</div>
+          </div>
+          <a class="btn-export" id="btn-download-pdf" href="#" download>
+            ⬇️ Baixar PDF Selecionável
+          </a>
+        </div>
+
+        <!-- 3. Relatório de Análise -->
+        <div class="export-card">
+          <div>
+            <div class="export-icon">📊</div>
+            <div class="export-name">Relatório de Auditoria</div>
+            <div class="export-desc">Comparação técnica detalhada antes e depois, critérios e pendências em PDF.</div>
+          </div>
+          <a class="btn-export" id="btn-download-report" href="#" download>
+            ⬇️ Baixar Relatório PDF
+          </a>
+        </div>
+
+        <!-- 4. Checklist de Pendências -->
+        <div class="export-card">
+          <div>
+            <div class="export-icon">📋</div>
+            <div class="export-name">Lista de Pendências</div>
+            <div class="export-desc">Checklist estruturado das ações recomendadas para revisão humana.</div>
+          </div>
+          <a class="btn-export" id="btn-download-checklist" href="#" download>
+            ⬇️ Baixar Checklist (.txt)
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

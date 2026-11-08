@@ -1,0 +1,41 @@
+from app.analyzer import ResumeAnalyzer
+from tests.test_helpers import SAMPLE_CV_RAW
+
+
+def test_analyzer_objective_scoring():
+    diag = ResumeAnalyzer.analyze(SAMPLE_CV_RAW, "curriculo.docx")
+
+    assert 0 <= diag.overall_score <= 100
+    assert len(diag.criteria) == 6
+    criterion_ids = [c.criterion_id for c in diag.criteria]
+    assert "structure" in criterion_ids
+    assert "impact" in criterion_ids
+    assert "action_verbs" in criterion_ids
+    assert "keywords" in criterion_ids
+    assert "readability" in criterion_ids
+    assert "contact" in criterion_ids
+
+    # Scores must match sum of criteria
+    expected_sum = int(round(sum(c.score for c in diag.criteria)))
+    assert diag.overall_score == expected_sum
+
+    # Must provide key issues and positive points
+    assert len(diag.positive_points) > 0
+    assert diag.has_extractable_text is True
+
+
+def test_analyzer_consistency():
+    # Analyzing identical text twice must yield strictly identical results
+    diag1 = ResumeAnalyzer.analyze(SAMPLE_CV_RAW, "cv.pdf")
+    diag2 = ResumeAnalyzer.analyze(SAMPLE_CV_RAW, "cv.pdf")
+
+    assert diag1.overall_score == diag2.overall_score
+    for c1, c2 in zip(diag1.criteria, diag2.criteria):
+        assert c1.score == c2.score
+        assert c1.criterion_id == c2.criterion_id
+
+
+def test_empty_text_analysis():
+    empty_diag = ResumeAnalyzer.analyze("", "vazio.pdf")
+    assert empty_diag.overall_score == 0
+    assert empty_diag.has_extractable_text is False
