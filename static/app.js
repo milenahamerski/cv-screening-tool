@@ -59,13 +59,13 @@ function initUpload() {
 }
 
 async function handleFileUpload(file) {
-  const validExts = [".pdf", ".docx"];
   const filename = file.name;
-  const isDocx = filename.toLowerCase().endsWith(".docx");
+  const isDocx = filename.toLowerCase().endsWith(".docx") || filename.toLowerCase().endsWith(".doc");
   const isPdf = filename.toLowerCase().endsWith(".pdf");
+  const isMd = filename.toLowerCase().endsWith(".md") || filename.toLowerCase().endsWith(".markdown") || filename.toLowerCase().endsWith(".txt");
 
-  if (!isDocx && !isPdf) {
-    alert("Formato não suportado. Por favor, envie um arquivo .pdf ou .docx");
+  if (!isDocx && !isPdf && !isMd) {
+    alert("Formato não suportado. Por favor, envie um arquivo .pdf, .docx ou .md");
     return;
   }
 
@@ -76,7 +76,7 @@ async function handleFileUpload(file) {
   const fileStatsDisplay = document.getElementById("file-stats-display");
 
   fileNameDisplay.textContent = filename;
-  fileFormatBadge.textContent = isDocx ? "DOCX" : "PDF";
+  fileFormatBadge.textContent = isDocx ? "DOCX" : (isMd ? "MD" : "PDF");
   fileStatsDisplay.textContent = `Carregando... (${(file.size / 1024).toFixed(1)} KB)`;
   fileInfoBar.classList.remove("hidden");
 
@@ -836,6 +836,7 @@ function initManualReview() {
         syncMarkdownBackend(true);
       };
       reader.readAsText(file);
+      mdFileInput.value = "";
     }
   });
 
@@ -899,13 +900,14 @@ Engenheira de Software com 5 anos de experiência especializada em arquitetura d
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          session_id: currentSessionId,
+          session_id: currentSessionId || null,
           markdown_text: editedText
         })
       });
 
       if (!res.ok) {
-        throw new Error("Erro ao processar Markdown.");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Erro ao processar Markdown.");
       }
 
       const data = await res.json();

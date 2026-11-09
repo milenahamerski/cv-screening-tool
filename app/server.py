@@ -37,6 +37,19 @@ app.add_middleware(
 sessions: Dict[str, Dict[str, Any]] = {}
 
 
+class OptimizeRequest(BaseModel):
+    session_id: str
+
+
+class FromMarkdownRequest(BaseModel):
+    markdown_text: str
+    session_id: Optional[str] = None
+
+
+class FormatMarkdownRequest(BaseModel):
+    markdown_text: str
+
+
 class ManualEditRequest(BaseModel):
     session_id: Optional[str] = None
     edited_text: str
@@ -45,12 +58,13 @@ class ManualEditRequest(BaseModel):
 
 @app.post("/api/upload")
 async def upload_resume(file: UploadFile = File(...)):
-    """Receives and analyzes a resume (PDF or DOCX), keeping the original strictly unmodified."""
+    """Receives and analyzes a resume (PDF, DOCX or MD), keeping the original strictly unmodified."""
     filename = file.filename or "curriculo.pdf"
-    if not (filename.lower().endswith(".pdf") or filename.lower().endswith(".docx")):
+    valid_exts = (".pdf", ".docx", ".doc", ".md", ".markdown", ".txt")
+    if not any(filename.lower().endswith(ext) for ext in valid_exts):
         raise HTTPException(
             status_code=400,
-            detail="Formato não suportado. Por favor, envie um arquivo em formato .pdf ou .docx"
+            detail="Formato não suportado. Por favor, envie um arquivo em formato .pdf, .docx ou .md"
         )
 
     content = await file.read()
@@ -96,9 +110,9 @@ async def upload_resume(file: UploadFile = File(...)):
 
 
 @app.post("/api/optimize")
-async def optimize_resume(payload: Dict[str, str]):
+async def optimize_resume(req: OptimizeRequest):
     """Runs the automated optimization flow and re-inspects using identical criteria."""
-    session_id = payload.get("session_id")
+    session_id = req.session_id
     if not session_id or session_id not in sessions:
         raise HTTPException(status_code=404, detail="Sessão não encontrada. Faça o upload do currículo primeiro.")
 
@@ -143,9 +157,9 @@ async def optimize_resume(payload: Dict[str, str]):
 
 
 @app.post("/api/format-markdown")
-async def format_markdown(payload: Dict[str, str]):
+async def format_markdown(req: FormatMarkdownRequest):
     """Auto-formats messy or non-standard markdown into the canonical ATS standard."""
-    raw_md = payload.get("markdown_text", "").strip()
+    raw_md = req.markdown_text.strip()
     if not raw_md:
         raise HTTPException(status_code=400, detail="Texto vazio.")
 
@@ -161,13 +175,13 @@ async def format_markdown(payload: Dict[str, str]):
 
 
 @app.post("/api/from-markdown")
-async def from_markdown(payload: Dict[str, str]):
+async def from_markdown(req: FromMarkdownRequest):
     """Creates or updates a session directly from pasted Markdown and generates the beautiful CV."""
-    markdown_text = payload.get("markdown_text", "").strip()
+    markdown_text = req.markdown_text.strip()
     if not markdown_text:
         raise HTTPException(status_code=400, detail="O texto em Markdown não pode estar vazio.")
 
-    session_id = payload.get("session_id")
+    session_id = req.session_id
     if not session_id or session_id not in sessions:
         session_id = str(uuid.uuid4())
         sessions[session_id] = {

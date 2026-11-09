@@ -21,8 +21,11 @@ class DocumentExtractor:
         elif filename_lower.endswith(".docx") or filename_lower.endswith(".doc"):
             file_format = "DOCX"
             text, pages_count, extraction_notes = DocumentExtractor._extract_docx(file_bytes)
+        elif filename_lower.endswith(".md") or filename_lower.endswith(".markdown") or filename_lower.endswith(".txt"):
+            file_format = "MD"
+            text, pages_count, extraction_notes = DocumentExtractor._extract_text(file_bytes)
         else:
-            raise ValueError(f"Formato não suportado: {filename}. Utilize arquivos .pdf ou .docx")
+            raise ValueError(f"Formato não suportado: {filename}. Utilize arquivos .pdf, .docx ou .md")
 
         clean_text = DocumentExtractor._normalize_extracted_text(text)
         has_text = len(clean_text.strip()) > 20
@@ -81,6 +84,16 @@ class DocumentExtractor:
             return full_text, pages_est, notes
         except Exception as e:
             return "", 0, [f"Erro na extração do DOCX: {str(e)}"]
+
+    @staticmethod
+    def _extract_text(file_bytes: bytes) -> Tuple[str, int, List[str]]:
+        try:
+            text = file_bytes.decode("utf-8", errors="replace")
+            lines = [l for l in text.splitlines() if l.strip()]
+            pages_est = max(1, len(lines) // 35)
+            return text, pages_est, ["Arquivo Markdown/Texto importado com sucesso."]
+        except Exception as e:
+            return "", 0, [f"Erro na leitura do arquivo Markdown: {str(e)}"]
 
     @staticmethod
     def _normalize_extracted_text(text: str) -> str:

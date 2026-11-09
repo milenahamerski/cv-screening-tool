@@ -218,3 +218,29 @@ Assistente
     # so impact score must remain honest and not artificially maxed out!
     assert post_impact["score"] <= 8.0  # Well below max (20.0)
     assert any("métrica" in iss["issue"].lower() or "quantitativ" in iss["issue"].lower() for iss in opt["comparison"]["unresolved_issues"])
+
+
+def test_import_from_markdown_without_prior_session():
+    """Validates that importing directly from Markdown with session_id=None succeeds without 422 error."""
+    md = """# CARLOS SILVA
+carlos@email.com | (11) 98765-4321
+
+## RESUMO PROFISSIONAL
+Desenvolvedor backend experiente em Python e APIs escaláveis.
+
+## EXPERIÊNCIA PROFISSIONAL
+**TechCorp**
+**Desenvolvedor Python | 2022 - Atual**
+- Desenvolveu microsserviços em FastAPI reduzindo latência em 30%.
+
+## HABILIDADES E TECNOLOGIAS
+Python, FastAPI, PostgreSQL, Docker
+"""
+    res = client.post("/api/from-markdown", json={"session_id": None, "markdown_text": md})
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert "session_id" in data
+    assert "preview_html" in data
+    assert "CARLOS SILVA" in data["preview_html"]
+    assert "TechCorp" in data["preview_html"]
+    assert data["post_diagnosis"]["overall_score"] > 0

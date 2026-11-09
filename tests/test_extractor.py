@@ -28,6 +28,17 @@ def test_extract_pdf():
     assert result["original_size_bytes"] == len(pdf_bytes)
 
 
+def test_extract_markdown():
+    md_bytes = b"# Maria Teste\nmaria@email.com\n\n## RESUMO PROFISSIONAL\nDev Python\n"
+    result = DocumentExtractor.extract_from_bytes(md_bytes, "curriculo.md")
+
+    assert result["format"] == "MD"
+    assert result["filename"] == "curriculo.md"
+    assert result["has_extractable_text"] is True
+    assert "Maria Teste" in result["raw_text"]
+    assert result["word_count"] > 3
+
+
 def test_unsupported_format():
     with pytest.raises(ValueError, match="Formato não suportado"):
         DocumentExtractor.extract_from_bytes(b"image data", "foto.png")
