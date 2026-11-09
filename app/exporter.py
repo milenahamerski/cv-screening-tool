@@ -394,20 +394,22 @@ class DocumentExporter:
     # -------------------------------------------------------------
     @classmethod
     def generate_preview_html(cls, resume: ResumeStructured) -> str:
-        """Renders an elegant, realistic A4-style interactive HTML CV preview."""
+        """Renders an executive, realistic A4-style interactive HTML CV preview strictly matching the downloaded PDF."""
         name = (resume.contact.name or "SEU NOME COMPLETO").upper()
 
         contacts = []
         if resume.contact.location:
-            contacts.append(f"<span>📍 {resume.contact.location}</span>")
+            contacts.append(resume.contact.location)
         if resume.contact.phone:
-            contacts.append(f"<span>📞 {resume.contact.phone}</span>")
+            contacts.append(resume.contact.phone)
         if resume.contact.email:
-            contacts.append(f"<span>✉️ {resume.contact.email}</span>")
+            contacts.append(resume.contact.email)
         if resume.contact.linkedin:
-            contacts.append(f"<span>🔗 {resume.contact.linkedin}</span>")
+            contacts.append(resume.contact.linkedin)
         if resume.contact.github:
-            contacts.append(f"<span>💻 {resume.contact.github}</span>")
+            contacts.append(resume.contact.github)
+
+        contact_line = " &nbsp;•&nbsp; ".join(contacts)
 
         exp_html = ""
         if resume.experiences:
@@ -417,9 +419,9 @@ class DocumentExporter:
                 exp_html += "<div class='cv-job-header'>"
                 exp_html += f"<span class='cv-job-title'>{exp.title}</span>"
                 if exp.company:
-                    exp_html += f" <span class='cv-job-company'>| {exp.company}</span>"
+                    exp_html += f" | <span class='cv-job-company'>{exp.company}</span>"
                 if exp.period:
-                    exp_html += f"<span class='cv-job-period'>({exp.period})</span>"
+                    exp_html += f" <span class='cv-job-period'>({exp.period})</span>"
                 exp_html += "</div>"
                 if exp.bullets:
                     exp_html += "<ul class='cv-job-bullets'>"
@@ -436,11 +438,11 @@ class DocumentExporter:
                 edu_html += "<div class='cv-edu-item'>"
                 edu_html += f"<strong>{edu.degree}</strong>"
                 if edu.institution:
-                    edu_html += f" | <span style='color: #4b5563;'>{edu.institution}</span>"
+                    edu_html += f" | <span class='cv-edu-inst'>{edu.institution}</span>"
                 if edu.period:
                     edu_html += f" <span class='cv-job-period'>({edu.period})</span>"
                 if edu.details:
-                    edu_html += f"<div style='font-size: 0.85rem; font-style: italic; color: #4b5563; margin-top: 3px;'>{edu.details}</div>"
+                    edu_html += f"<div class='cv-edu-details'>{edu.details}</div>"
                 if edu.bullets:
                     edu_html += "<ul class='cv-job-bullets' style='margin-top: 4px;'>"
                     for b in edu.bullets:
@@ -453,19 +455,14 @@ class DocumentExporter:
         if resume.skill_categories:
             skills_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>HABILIDADES E TECNOLOGIAS</h3>"
             for cat, items in resume.skill_categories.items():
-                skills_html += f"<div class='cv-skill-category-row'>"
-                skills_html += f"<span class='cv-skill-cat-title'>{cat}:</span>"
-                skills_html += "<div class='cv-skills-pills'>"
-                for s in items:
-                    skills_html += f"<span class='cv-skill-pill'>{s}</span>"
-                skills_html += "</div></div>"
+                skills_html += "<div class='cv-skill-line'>"
+                skills_html += f"<strong>{cat}:</strong> " + " • ".join(items)
+                skills_html += "</div>"
             skills_html += "</div>"
         elif resume.skills:
             skills_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>HABILIDADES E TECNOLOGIAS</h3>"
-            skills_html += "<div class='cv-skills-pills'>"
-            for s in resume.skills:
-                skills_html += f"<span class='cv-skill-pill'>{s}</span>"
-            skills_html += "</div></div>"
+            skills_html += "<div class='cv-skill-line'>" + " • ".join(resume.skills) + "</div>"
+            skills_html += "</div>"
 
         certs_html = ""
         if resume.certifications:
@@ -477,10 +474,7 @@ class DocumentExporter:
         lang_html = ""
         if resume.languages:
             lang_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>IDIOMAS</h3>"
-            lang_html += "<div class='cv-skills-pills'>"
-            for l in resume.languages:
-                lang_html += f"<span class='cv-skill-pill' style='background:#f0fdf4; border-color:#bbf7d0;'>{l}</span>"
-            lang_html += "</div></div>"
+            lang_html += "<div class='cv-lang-line'>" + "  •  ".join(resume.languages) + "</div></div>"
 
         summary_html = ""
         if resume.summary:
@@ -491,7 +485,7 @@ class DocumentExporter:
           <div class="cv-paper-header">
             <h1 class="cv-name">{name}</h1>
             <div class="cv-contacts-bar">
-              {' • '.join(contacts)}
+              {contact_line}
             </div>
           </div>
           {summary_html}

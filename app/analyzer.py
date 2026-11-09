@@ -84,13 +84,17 @@ class ResumeAnalyzer:
                 positive_points.append(f"{c.name}: {c.details[0] if c.details else 'Atende plenamente aos padrões recomendados.'}")
             elif c.percentage < 60:
                 for det in c.details:
-                    if det.startswith("⚠️") or det.startswith("❌") or "Ausente" in det or "pouco" in det.lower() or "não encontrado" in det.lower():
-                        key_issues.append(f"[{c.name}] {det.replace('⚠️ ', '').replace('❌ ', '')}")
+                    if any(det.startswith(p) for p in ["[Atenção]", "[Ausente]", "[Incompleto]", "⚠️", "❌"]) or "Ausente" in det or "pouco" in det.lower() or "não encontrado" in det.lower():
+                        clean = det
+                        for prefix in ["[Atenção] ", "[Ausente] ", "[Incompleto] ", "[Atenção] ", "[Ausente] "]:
+                            clean = clean.replace(prefix, "")
+                        key_issues.append(f"[{c.name}] {clean}")
             
             # Extract actionable recommendations
             for det in c.details:
-                if det.startswith("💡"):
-                    initial_recommendations.append(det.replace("💡 ", ""))
+                if det.startswith("[Recomendação]") or det.startswith("💡"):
+                    clean = det.replace("[Recomendação] ", "").replace("[Recomendação] ", "")
+                    initial_recommendations.append(clean)
 
         # Detected sections list
         detected = []
@@ -129,20 +133,20 @@ class ResumeAnalyzer:
             score += 6.0
             details.append("Seção de Experiência Profissional identificada.")
         else:
-            details.append("❌ Seção de Experiência Profissional não identificada com título convencional.")
+            details.append("[Ausente] Seção de Experiência Profissional não identificada com título convencional.")
 
         if found_sections["formacao"]:
             score += 5.0
             details.append("Seção de Formação Acadêmica identificada.")
         else:
-            details.append("❌ Seção de Formação Acadêmica ausente ou com nomenclatura não convencional.")
+            details.append("[Ausente] Seção de Formação Acadêmica ausente ou com nomenclatura não convencional.")
 
         if found_sections["habilidades"]:
             score += 4.0
             details.append("Seção de Habilidades e Competências presente.")
         else:
-            details.append("⚠️ Seção dedicada de Habilidades e Tecnologias ausente.")
-            details.append("💡 Crie uma seção 'Habilidades e Tecnologias' para facilitar a indexação automática pelo ATS.")
+            details.append("[Atenção] Seção dedicada de Habilidades e Tecnologias ausente.")
+            details.append("[Recomendação] Crie uma seção 'Habilidades e Tecnologias' para facilitar a indexação automática pelo ATS.")
 
         if found_sections["contato"]:
             score += 3.0
@@ -155,7 +159,7 @@ class ResumeAnalyzer:
             score += 2.0
             details.append("Resumo/Perfil Profissional presente no início do documento.")
         else:
-            details.append("💡 Inclua um Resumo Profissional conciso (3 a 5 linhas) no início do currículo.")
+            details.append("[Recomendação] Inclua um Resumo Profissional conciso (3 a 5 linhas) no início do currículo.")
 
         pct = (score / weight) * 100.0
         status = "Excelente" if pct >= 85 else ("Bom" if pct >= 65 else ("Atenção" if pct >= 45 else "Crítico"))
@@ -206,15 +210,15 @@ class ResumeAnalyzer:
         elif metric_count >= 2:
             score = 11.0
             details.append(f"Poucos resultados numéricos ou métricas concretas identificadas ({metric_count} ocorrências).")
-            details.append("💡 Inclua números reais nos resultados das suas experiências (ex: % de aumento de eficiência, economia gerada, volume de entregas).")
+            details.append("[Recomendação] Inclua números reais nos resultados das suas experiências (ex: % de aumento de eficiência, economia gerada, volume de entregas).")
         elif metric_count == 1:
             score = 6.0
             details.append("Apenas 1 resultado quantitativo encontrado.")
-            details.append("💡 Destaque impactos mensuráveis nas descrições de cargo em vez de listar apenas tarefas rotineiras.")
+            details.append("[Recomendação] Destaque impactos mensuráveis nas descrições de cargo em vez de listar apenas tarefas rotineiras.")
         else:
             score = 3.0
-            details.append("❌ Nenhuma métrica mensurável (porcentagens, prazos, reduções, volumes) identificada.")
-            details.append("💡 ATS e recrutadores valorizam resultados concretos (ex: 'reduziu tempo de resposta em 30%', 'gerenciou equipe de 8 profissionais').")
+            details.append("[Ausente] Nenhuma métrica mensurável (porcentagens, prazos, reduções, volumes) identificada.")
+            details.append("[Recomendação] ATS e recrutadores valorizam resultados concretos (ex: 'reduziu tempo de resposta em 30%', 'gerenciou equipe de 8 profissionais').")
 
         pct = (score / weight) * 100.0
         status = "Excelente" if pct >= 85 else ("Bom" if pct >= 65 else ("Atenção" if pct >= 45 else "Crítico"))
@@ -257,11 +261,11 @@ class ResumeAnalyzer:
         elif verb_count >= 2:
             score += 4.0
             details.append(f"Uso modesto de verbos de ação ({verb_count} verbos identificados).")
-            details.append("💡 Inicie os tópicos de experiência com verbos no passado de ação (ex: 'Desenvolveu', 'Implementou', 'Coordenou').")
+            details.append("[Recomendação] Inicie os tópicos de experiência com verbos no passado de ação (ex: 'Desenvolveu', 'Implementou', 'Coordenou').")
         else:
             score += 1.5
-            details.append("❌ Pouquíssimos verbos de ação identificados. As frases parecem descrições passivas.")
-            details.append("💡 Substitua 'Responsável por...' por verbos diretos como 'Liderou', 'Otimizou', 'Implementou'.")
+            details.append("[Ausente] Pouquíssimos verbos de ação identificados. As frases parecem descrições passivas.")
+            details.append("[Recomendação] Substitua 'Responsável por...' por verbos diretos como 'Liderou', 'Otimizou', 'Implementou'.")
 
         # Bullet point formatting check
         bullet_lines = [l for l in lines if l.startswith("-") or l.startswith("•") or l.startswith("*")]
@@ -272,13 +276,13 @@ class ResumeAnalyzer:
             score += 2.0
             details.append("Uso parcial de tópicos.")
         else:
-            details.append("⚠️ Poucos ou nenhum marcador de tópico (bullets). Textos em blocos densos dificultam a triagem.")
-            details.append("💡 Separe realizações em tópicos curtos iniciados por verbos de ação.")
+            details.append("[Atenção] Poucos ou nenhum marcador de tópico (bullets). Textos em blocos densos dificultam a triagem.")
+            details.append("[Recomendação] Separe realizações em tópicos curtos iniciados por verbos de ação.")
 
         # First person check
         if len(first_person_matches) > 2:
             score = max(0.0, score - 2.0)
-            details.append("⚠️ Detectado uso de primeira pessoa ('eu', 'meu', 'participei'). Em currículos, recomenda-se voz ativa impessoal.")
+            details.append("[Atenção] Detectado uso de primeira pessoa ('eu', 'meu', 'participei'). Em currículos, recomenda-se voz ativa impessoal.")
         else:
             score += 1.0
 
@@ -323,11 +327,11 @@ class ResumeAnalyzer:
         elif kw_count >= 3:
             score += 6.0
             details.append(f"Quantidade moderada de palavras-chave ({kw_count} encontradas).")
-            details.append("💡 Inclua termos técnicos, metodologias e ferramentas que você realmente utilizou.")
+            details.append("[Recomendação] Inclua termos técnicos, metodologias e ferramentas que você realmente utilizou.")
         else:
             score += 2.5
-            details.append("❌ Baixa densidade de palavras-chave técnicas e metodologias.")
-            details.append("💡 Adicione competências explícitas (ferramentas, softwares, metodologias ágeis, etc.).")
+            details.append("[Ausente] Baixa densidade de palavras-chave técnicas e metodologias.")
+            details.append("[Recomendação] Adicione competências explícitas (ferramentas, softwares, metodologias ágeis, etc.).")
 
         # Check if skills section exists
         has_skills_section = bool(re.search(r"\b(habilidades|skills|competências|tecnologias|ferramentas)\b", text, re.IGNORECASE))
@@ -335,7 +339,7 @@ class ResumeAnalyzer:
             score += 3.0
             details.append("Competências organizadas em seção dedicada.")
         else:
-            details.append("💡 Organize suas competências em tópicos de fácil leitura por sistemas ATS.")
+            details.append("[Recomendação] Organize suas competências em tópicos de fácil leitura por sistemas ATS.")
 
         score = min(weight, score)
         pct = (score / weight) * 100.0
@@ -368,11 +372,11 @@ class ResumeAnalyzer:
         elif 950 < word_count <= 1600:
             score += 5.0
             details.append(f"Documento extenso ({word_count} palavras). Risco de prolixidade em triagens rápidas.")
-            details.append("💡 Foque nos últimos 5 a 10 anos de carreira e sintetize experiências antigas.")
+            details.append("[Recomendação] Foque nos últimos 5 a 10 anos de carreira e sintetize experiências antigas.")
         elif word_count > 1600:
             score += 2.0
             details.append(f"Documento excessivamente longo ({word_count} palavras).")
-            details.append("💡 Reduza para até 2 páginas objetivas.")
+            details.append("[Recomendação] Reduza para até 2 páginas objetivas.")
         else:
             score += 1.0
             details.append(f"Documento muito curto ({word_count} palavras). Informações insuficientes.")
@@ -383,7 +387,7 @@ class ResumeAnalyzer:
             score += 4.0
             details.append("Texto limpo e totalmente decodificável por parsers ATS.")
         else:
-            details.append("⚠️ Presença de caracteres especiais ou artefatos de codificação.")
+            details.append("[Atenção] Presença de caracteres especiais ou artefatos de codificação.")
 
         # Check paragraph density (avoid single gigantic block)
         paragraphs = [p for p in text.split("\n\n") if len(p.strip()) > 20]
@@ -392,7 +396,7 @@ class ResumeAnalyzer:
             details.append("Boa separação visual de blocos e parágrafos.")
         else:
             score += 1.5
-            details.append("⚠️ Pouca divisão de blocos; texto pode parecer denso.")
+            details.append("[Atenção] Pouca divisão de blocos; texto pode parecer denso.")
 
         score = min(weight, score)
         pct = (score / weight) * 100.0
@@ -421,8 +425,8 @@ class ResumeAnalyzer:
             score += 4.0
             details.append("E-mail válido identificado.")
         else:
-            details.append("❌ E-mail não encontrado no currículo.")
-            details.append("💡 Inclua um e-mail profissional de fácil contato.")
+            details.append("[Ausente] E-mail não encontrado no currículo.")
+            details.append("[Recomendação] Inclua um e-mail profissional de fácil contato.")
 
         # Phone
         has_phone = bool(re.search(r"(\+?\d{1,3}\s*)?(\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}", text))
@@ -430,8 +434,8 @@ class ResumeAnalyzer:
             score += 4.0
             details.append("Telefone/WhatsApp identificado.")
         else:
-            details.append("❌ Telefone para contato não identificado.")
-            details.append("💡 Adicione número de telefone celular/WhatsApp com DDD.")
+            details.append("[Ausente] Telefone para contato não identificado.")
+            details.append("[Recomendação] Adicione número de telefone celular/WhatsApp com DDD.")
 
         # Professional Links (LinkedIn, GitHub, Portfolio)
         has_linkedin = bool(re.search(r"linkedin\.com/in/[a-zA-Z0-9-_]+", text, re.IGNORECASE) or "linkedin" in text.lower())
@@ -440,8 +444,8 @@ class ResumeAnalyzer:
             score += 4.0
             details.append("Link de perfil profissional (LinkedIn ou GitHub) identificado.")
         else:
-            details.append("⚠️ Link para LinkedIn ou portfólio não encontrado.")
-            details.append("💡 Adicione o link limpo do seu LinkedIn no cabeçalho.")
+            details.append("[Atenção] Link para LinkedIn ou portfólio não encontrado.")
+            details.append("[Recomendação] Adicione o link limpo do seu LinkedIn no cabeçalho.")
 
         # Location (City / State)
         has_location = bool(re.search(r"\b(são paulo|rio de janeiro|curitiba|belo horizonte|porto alegre|salvador|brasília|campinas|remoto|híbrido|brasil|[a-z\s]+[-/]\s*[a-z]{2})\b", text, re.IGNORECASE))
@@ -450,7 +454,7 @@ class ResumeAnalyzer:
             details.append("Localização (cidade/estado ou modelo de trabalho) indicada.")
         else:
             score += 1.0
-            details.append("💡 Indique sua cidade e estado no topo (ex: 'São Paulo - SP' ou 'Disponível para trabalho remoto').")
+            details.append("[Recomendação] Indique sua cidade e estado no topo (ex: 'São Paulo - SP' ou 'Disponível para trabalho remoto').")
 
         # Check discouraged personal data
         found_discouraged = []
@@ -461,7 +465,7 @@ class ResumeAnalyzer:
         if found_discouraged:
             score = max(0.0, score - 2.0)
             for d in found_discouraged:
-                details.append(f"⚠️ {d}")
+                details.append(f"[Atenção] {d}")
 
         score = min(weight, score)
         pct = (score / weight) * 100.0

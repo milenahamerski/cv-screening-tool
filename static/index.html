@@ -30,16 +30,23 @@
       </div>
 
       <div class="upload-dropzone" id="dropzone">
-        <span class="upload-icon">📄</span>
+        <div class="upload-icon-box">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+        </div>
         <h3>Arraste e solte seu currículo aqui</h3>
         <p class="upload-hint">Formatos suportados: <strong>PDF</strong> ou <strong>DOCX</strong> (o arquivo original é 100% preservado sem alterações)</p>
         <input type="file" id="file-input" accept=".pdf,.docx" style="display: none;">
         <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
           <button type="button" class="btn-secondary" onclick="document.getElementById('file-input').click()">
-            📁 Selecionar arquivo no computador
+            Selecionar arquivo no computador
           </button>
           <button type="button" class="btn-secondary" id="btn-open-markdown-mode">
-            📝 Ou colar diretamente em Markdown (MD)
+            Ou colar diretamente em Markdown (MD)
           </button>
         </div>
       </div>
@@ -51,7 +58,7 @@
           <span id="file-stats-display" style="color: var(--text-muted); font-size: 0.85rem;"></span>
         </div>
         <button type="button" class="btn-secondary" onclick="document.getElementById('file-input').click()">
-          🔄 Substituir documento
+          Substituir documento
         </button>
       </div>
     </section>
@@ -97,15 +104,15 @@
       <!-- Feedback Columns -->
       <div class="feedback-columns">
         <div class="feedback-box issues">
-          <h4 class="feedback-title" style="color: var(--danger);">⚠️ Principais Problemas Identificados</h4>
+          <h4 class="feedback-title" style="color: var(--danger);">Principais Problemas Identificados</h4>
           <ul class="feedback-list" id="init-issues-list"></ul>
         </div>
         <div class="feedback-box positives">
-          <h4 class="feedback-title" style="color: var(--success);">✅ Pontos Positivos do Documento</h4>
+          <h4 class="feedback-title" style="color: var(--success);">Pontos Positivos do Documento</h4>
           <ul class="feedback-list" id="init-positives-list"></ul>
         </div>
         <div class="feedback-box recs">
-          <h4 class="feedback-title" style="color: var(--warning);">💡 Recomendações Iniciais</h4>
+          <h4 class="feedback-title" style="color: var(--warning);">Recomendações Iniciais</h4>
           <ul class="feedback-list" id="init-recs-list"></ul>
         </div>
       </div>
@@ -120,7 +127,7 @@
         Reorganiza a estrutura para padrões ATS, melhora a escrita com verbos de ação e destaca seus resultados reais sem inventar nenhuma informação profissional.
       </p>
       <button class="btn-optimize-main" id="btn-improve-cv">
-        <span>✨ Melhorar CV</span>
+        <span>Melhorar CV</span>
       </button>
 
       <!-- Painel de Etapas Reais de Progresso -->
@@ -146,17 +153,17 @@
         <span class="badge-ats">Mesmos critérios e regras aplicados</span>
       </div>
 
-      <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+      <div class="technical-check-box">
         <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 8px;">
           Validações Técnicas Executadas:
         </h4>
         <ul style="font-size: 0.9rem; padding-left: 20px; color: var(--text-main);" id="post-checks-list">
-          <li>✔ <strong>Legibilidade por extração textual:</strong> Texto limpo em coluna única sem blocos truncados.</li>
-          <li>✔ <strong>Estrutura convencional:</strong> Títulos universais (Resumo, Experiência, Formação, Habilidades).</li>
-          <li>✔ <strong>Distribuição de palavras-chave:</strong> Competências sustentadas organizadas em seção específica.</li>
-          <li>✔ <strong>Clareza nas experiências:</strong> Formato em marcadores iniciado por verbos de ação diretos.</li>
-          <li id="preservation-check-bullet">✔ <strong>Preservação estrita:</strong> Datas, cargos, empresas e formações do original foram 100% mantidos.</li>
-          <li>✔ <strong>Integridade factual:</strong> Nenhuma informação ou número fictício foi inserido.</li>
+          <li><strong>Legibilidade por extração textual:</strong> Texto limpo em coluna única sem blocos truncados.</li>
+          <li><strong>Estrutura convencional:</strong> Títulos universais (Resumo, Experiência, Formação, Habilidades).</li>
+          <li><strong>Distribuição de palavras-chave:</strong> Competências sustentadas organizadas em seção específica.</li>
+          <li><strong>Clareza nas experiências:</strong> Formato em marcadores iniciado por verbos de ação diretos.</li>
+          <li id="preservation-check-bullet"><strong>Preservação estrita:</strong> Datas, cargos, empresas e formações do original foram 100% mantidos.</li>
+          <li><strong>Integridade factual:</strong> Nenhuma informação ou número fictício foi inserido.</li>
         </ul>
       </div>
 
@@ -221,9 +228,9 @@
       </div>
 
       <div class="disclaimer-banner">
-        <span>ℹ️</span>
+        <div class="disclaimer-badge">Aviso</div>
         <div>
-          <strong>Aviso de Transparência Técnica:</strong> A pontuação reflete exclusivamente a conformidade estrutural, vocabular e textual do documento para leitores de triagem ATS, e <strong>não</strong> representa probabilidade de contratação ou aprovação em processos seletivos.
+          <strong>Transparência Técnica:</strong> A pontuação reflete exclusivamente a conformidade estrutural, vocabular e textual do documento para leitores de triagem ATS, e <strong>não</strong> representa probabilidade de contratação ou aprovação em processos seletivos.
         </div>
       </div>
     </section>
@@ -272,16 +279,16 @@
         <div class="editor-actions-row">
           <input type="file" id="md-file-input" accept=".md,.txt" style="display: none;">
           <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="document.getElementById('md-file-input').click()">
-            📂 Carregar .MD
+            Carregar .MD
           </button>
           <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-auto-format-md" title="Reorganiza e padroniza seu Markdown automaticamente">
-            ✨ Auto-Formatar no Padrão
+            Auto-Formatar no Padrão
           </button>
           <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-toggle-guide">
-            📖 Guia de Padrão Markdown
+            Guia de Padrão Markdown
           </button>
           <button class="btn-reanalyze" id="btn-reanalyze">
-            🚀 Gerar CV Bonitinho & Reavaliar
+            Atualizar Prévia e Reavaliar
           </button>
         </div>
       </div>
@@ -290,7 +297,7 @@
       <div class="md-guide-panel hidden" id="md-guide-panel">
         <div class="md-guide-header" id="md-guide-toggle-header">
           <div>
-            <strong>📋 Padrão Recomendado de Markdown para o CV Optimizer</strong>
+            <strong>Padrão Recomendado de Markdown para o CV Optimizer</strong>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
               Você pode escrever de forma flexível ou usar a estrutura recomendada abaixo (clique em "Auto-Formatar no Padrão" para organizar seu texto automaticamente).
             </p>
@@ -354,9 +361,9 @@ Inglês (Avançado) | Francês (Intermediário)</div>
       <!-- Tabs de visualização -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <div class="editor-tabs">
-          <button type="button" class="tab-btn active" id="tab-split">⚡ Lado a Lado (Editor & Prévia)</button>
-          <button type="button" class="tab-btn" id="tab-editor-only">✏️ Somente Editor MD</button>
-          <button type="button" class="tab-btn" id="tab-preview-only">👁️ Somente Prévia do CV</button>
+          <button type="button" class="tab-btn active" id="tab-split">Lado a Lado (Editor e Prévia)</button>
+          <button type="button" class="tab-btn" id="tab-editor-only">Somente Editor MD</button>
+          <button type="button" class="tab-btn" id="tab-preview-only">Somente Prévia do CV</button>
         </div>
         <div id="editor-status" style="font-size: 0.85rem; color: var(--success); font-weight: 600;"></div>
       </div>
@@ -392,48 +399,48 @@ Inglês (Avançado) | Francês (Intermediário)</div>
         <!-- 1. DOCX -->
         <div class="export-card">
           <div>
-            <div class="export-icon">📝</div>
+            <div class="export-format-badge">DOCX</div>
             <div class="export-name">Currículo em DOCX</div>
             <div class="export-desc">Formato em coluna única, títulos padrão, 100% editável no Word e LibreOffice.</div>
           </div>
           <a class="btn-export" id="btn-download-docx" href="#" download>
-            ⬇️ Baixar DOCX Editável
+            Baixar DOCX Editável
           </a>
         </div>
 
         <!-- 2. PDF -->
         <div class="export-card">
           <div>
-            <div class="export-icon">📄</div>
+            <div class="export-format-badge">PDF</div>
             <div class="export-name">Currículo em PDF</div>
             <div class="export-desc">Layout profissional limpo com texto selecionável e compatível com ATS.</div>
           </div>
           <a class="btn-export" id="btn-download-pdf" href="#" download>
-            ⬇️ Baixar PDF Selecionável
+            Baixar PDF Selecionável
           </a>
         </div>
 
         <!-- 3. Relatório de Análise -->
         <div class="export-card">
           <div>
-            <div class="export-icon">📊</div>
+            <div class="export-format-badge">RELATÓRIO</div>
             <div class="export-name">Relatório de Auditoria</div>
             <div class="export-desc">Comparação técnica detalhada antes e depois, critérios e pendências em PDF.</div>
           </div>
           <a class="btn-export" id="btn-download-report" href="#" download>
-            ⬇️ Baixar Relatório PDF
+            Baixar Relatório PDF
           </a>
         </div>
 
         <!-- 4. Checklist de Pendências -->
         <div class="export-card">
           <div>
-            <div class="export-icon">📋</div>
+            <div class="export-format-badge">CHECKLIST</div>
             <div class="export-name">Lista de Pendências</div>
             <div class="export-desc">Checklist estruturado das ações recomendadas para revisão humana.</div>
           </div>
           <a class="btn-export" id="btn-download-checklist" href="#" download>
-            ⬇️ Baixar Checklist (.txt)
+            Baixar Checklist (.txt)
           </a>
         </div>
       </div>

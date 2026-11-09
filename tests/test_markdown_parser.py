@@ -79,7 +79,7 @@ def test_generate_preview_html():
     assert "cv-paper" in html
     assert "MARIANA COSTA SILVA" in html
     assert "TechNova Inovações" in html
-    assert "cv-skill-pill" in html
+    assert "cv-skill-line" in html
 def test_user_screenshot_markdown():
     user_md = """# CARLOS EDUARDO
 São Paulo - SP | carlos@email.com | (11) 91234-5678

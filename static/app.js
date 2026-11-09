@@ -239,7 +239,7 @@ async function runOptimizationFlow() {
   for (let i = 0; i < plannedSteps.length - 1; i++) {
     const item = document.createElement("div");
     item.className = "step-item";
-    item.innerHTML = `<span class="step-check">✔</span> <span>${plannedSteps[i]}</span>`;
+    item.innerHTML = `<span class="step-check"></span> <span>${plannedSteps[i]}</span>`;
     stepsList.appendChild(item);
     await new Promise((r) => setTimeout(r, 220));
   }
@@ -263,7 +263,7 @@ async function runOptimizationFlow() {
     // Final step complete
     const finalItem = document.createElement("div");
     finalItem.className = "step-item";
-    finalItem.innerHTML = `<span class="step-check">✔</span> <span>${plannedSteps[plannedSteps.length - 1]}</span>`;
+    finalItem.innerHTML = `<span class="step-check"></span> <span>${plannedSteps[plannedSteps.length - 1]}</span>`;
     stepsList.appendChild(finalItem);
 
     // Section D: Inspeção posterior à otimização
@@ -288,7 +288,7 @@ async function runOptimizationFlow() {
     alert("Erro na otimização: " + err.message);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span>✨ Melhorar CV (Executado)</span>`;
+    btn.innerHTML = `<span>Melhorar CV (Executado)</span>`;
   }
 }
 
@@ -302,9 +302,9 @@ function renderPostInspection(postDiag, preservation) {
   // Preservation bullet update
   const presBullet = document.getElementById("preservation-check-bullet");
   if (preservation && preservation.is_valid) {
-    presBullet.innerHTML = `✔ <strong>Preservação factual comprovada:</strong> ${preservation.details.join("; ")}`;
+    presBullet.innerHTML = `<strong>Preservação factual comprovada:</strong> ${preservation.details.join("; ")}`;
   } else if (preservation && preservation.hallucination_warnings.length > 0) {
-    presBullet.innerHTML = `⚠️ <strong>Avisos de preservação:</strong> ${preservation.hallucination_warnings.join("; ")}`;
+    presBullet.innerHTML = `<strong>Avisos de preservação:</strong> ${preservation.hallucination_warnings.join("; ")}`;
   }
 
   // Criteria Grid for Post Inspection
@@ -537,11 +537,7 @@ function renderMarkdownPreviewLocally(mdText) {
       const parts = raw.split("|").map(p => p.trim()).filter(Boolean);
       parts.forEach(p => {
         let clean = p.replace(/\[(.*?)\]\((.*?)\)/g, "$1").replace(/\*\*/g, "").trim();
-        if (clean.includes("@")) contacts.push(`<span>✉️ ${clean}</span>`);
-        else if (/\d{4,5}[-\s]?\d{4}/.test(clean)) contacts.push(`<span>📞 ${clean}</span>`);
-        else if (/linkedin/i.test(clean)) contacts.push(`<span>🔗 ${clean}</span>`);
-        else if (/github/i.test(clean)) contacts.push(`<span>💻 ${clean}</span>`);
-        else contacts.push(`<span>📍 ${clean}</span>`);
+        if (clean) contacts.push(clean);
       });
       continue;
     }
@@ -663,7 +659,7 @@ function renderMarkdownPreviewLocally(mdText) {
   html += `<div class="cv-paper-header">`;
   html += `<h1 class="cv-name">${name}</h1>`;
   if (contacts.length > 0) {
-    html += `<div class="cv-contacts-bar">${contacts.join(" • ")}</div>`;
+    html += `<div class="cv-contacts-bar">${contacts.join(" &nbsp;•&nbsp; ")}</div>`;
   }
   html += `</div>`;
 
@@ -674,28 +670,21 @@ function renderMarkdownPreviewLocally(mdText) {
     if (sec.isSkills) {
       if (Object.keys(sec.skillCategories).length > 0) {
         for (const [cat, items] of Object.entries(sec.skillCategories)) {
-          html += `<div class="cv-skill-category-row">`;
-          html += `<span class="cv-skill-cat-title">${cat}:</span>`;
-          html += `<div class="cv-skills-pills">`;
-          items.forEach(s => { html += `<span class="cv-skill-pill">${s}</span>`; });
-          html += `</div></div>`;
+          html += `<div class="cv-skill-line"><strong>${cat}:</strong> ${items.join(" • ")}</div>`;
         }
       } else {
-        html += `<div class="cv-skills-pills">`;
         const allText = sec.text.concat(sec.bullets).join(", ");
-        const rawSkills = allText.split(/[,;•|]/);
-        rawSkills.map(s => s.trim().replace(/\.$/, "")).filter(s => s && s.length < 35).forEach(s => {
-          html += `<span class="cv-skill-pill">${s}</span>`;
-        });
-        html += `</div>`;
+        const rawSkills = allText.split(/[,;•|]/).map(s => s.trim().replace(/\.$/, "")).filter(s => s && s.length < 35);
+        if (rawSkills.length > 0) {
+          html += `<div class="cv-skill-line">${rawSkills.join(" • ")}</div>`;
+        }
       }
     } else if (sec.isLanguages) {
-      html += `<div class="cv-skills-pills">`;
       const allLangText = sec.text.concat(sec.bullets).join(" | ");
-      allLangText.split(/[|•,]/).map(l => l.trim()).filter(Boolean).forEach(l => {
-        html += `<span class="cv-skill-pill" style="background:#f0fdf4; border-color:#bbf7d0;">${l}</span>`;
-      });
-      html += `</div>`;
+      const rawLangs = allLangText.split(/[|•,]/).map(l => l.trim()).filter(Boolean);
+      if (rawLangs.length > 0) {
+        html += `<div class="cv-lang-line">${rawLangs.join(" &nbsp;•&nbsp; ")}</div>`;
+      }
     } else {
       if (sec.text.length > 0) {
         html += `<p class="cv-summary-text">${sec.text.join(" ")}</p>`;
@@ -703,12 +692,12 @@ function renderMarkdownPreviewLocally(mdText) {
       if (sec.jobs.length > 0) {
         sec.jobs.forEach(j => {
           html += `<div class="cv-job-block">`;
-          const compStr = j.comp ? ` <span class="cv-job-company">| ${j.comp}</span>` : "";
+          const compStr = j.comp ? ` | <span class="cv-job-company">${j.comp}</span>` : "";
           const periodStr = j.period ? ` <span class="cv-job-period">(${j.period})</span>` : "";
 
           html += `<div class="cv-job-header"><span class="cv-job-title">${j.title}</span>${compStr}${periodStr}</div>`;
           if (j.details) {
-            html += `<div style="font-size: 0.85rem; font-style: italic; color: #4b5563; margin: 2px 0 4px;">${j.details}</div>`;
+            html += `<div class="cv-edu-details">${j.details}</div>`;
           }
           if (j.bullets.length > 0) {
             html += `<ul class="cv-job-bullets">`;
@@ -745,8 +734,8 @@ function initManualReview() {
     btnToggleGuide.addEventListener("click", () => {
       mdGuidePanel.classList.toggle("hidden");
       btnToggleGuide.textContent = mdGuidePanel.classList.contains("hidden")
-        ? "📖 Guia de Padrão Markdown"
-        : "✖ Fechar Guia";
+        ? "Guia de Padrão Markdown"
+        : "Ocultar Guia";
     });
   }
 
@@ -779,14 +768,14 @@ function initManualReview() {
         }
 
         const statusEl = document.getElementById("editor-status");
-        statusEl.textContent = "✔ Markdown padronizado e organizado com sucesso!";
+        statusEl.textContent = "Markdown padronizado e organizado com sucesso.";
         setTimeout(() => { statusEl.textContent = ""; }, 4000);
 
       } catch (err) {
         alert(err.message);
       } finally {
         btnAutoFormat.disabled = false;
-        btnAutoFormat.innerHTML = "✨ Auto-Formatar no Padrão";
+        btnAutoFormat.innerHTML = "Auto-Formatar no Padrão";
       }
     });
   }
@@ -902,7 +891,7 @@ Engenheira de Software com 5 anos de experiência especializada em arquitetura d
 
     if (showStatusFeedback) {
       reanalyzeBtn.disabled = true;
-      reanalyzeBtn.innerHTML = `<span class="step-spinner" style="width: 14px; height: 14px;"></span> Gerando CV Bonitinho...`;
+      reanalyzeBtn.innerHTML = `<span class="step-spinner" style="width: 14px; height: 14px;"></span> Atualizando Prévia...`;
     }
 
     try {
@@ -940,7 +929,7 @@ Engenheira de Software com 5 anos de experiência especializada em arquitetura d
 
       if (showStatusFeedback) {
         const statusEl = document.getElementById("editor-status");
-        statusEl.textContent = `✔ CV Bonitinho gerado com sucesso! Nova pontuação: ${data.post_diagnosis.overall_score}/100`;
+        statusEl.textContent = `Prévia atualizada com sucesso. Nova pontuação: ${data.post_diagnosis.overall_score}/100`;
         setTimeout(() => {
           statusEl.textContent = "";
         }, 5000);
@@ -951,7 +940,7 @@ Engenheira de Software com 5 anos de experiência especializada em arquitetura d
     } finally {
       if (showStatusFeedback) {
         reanalyzeBtn.disabled = false;
-        reanalyzeBtn.innerHTML = "✨ Gerar CV Bonitinho & Reavaliar";
+        reanalyzeBtn.innerHTML = "Atualizar Prévia e Reavaliar";
       }
     }
   }
