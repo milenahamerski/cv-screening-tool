@@ -409,9 +409,27 @@ class ResumeOptimizer:
         if struct.contact.email:
             contact_parts.append(struct.contact.email)
         if struct.contact.linkedin:
-            contact_parts.append(f"[{struct.contact.linkedin}](https://{struct.contact.linkedin.replace('https://', '')})")
+            li = struct.contact.linkedin.strip()
+            if li.startswith("http") or "linkedin.com" in li:
+                clean_url = li if li.startswith("http") else f"https://{li}"
+                contact_parts.append(f"LinkedIn: [{clean_url}]")
+            elif li == "LinkedIn":
+                contact_parts.append("LinkedIn: [inserir URL]")
+            elif not any(p in li.lower() for p in ["inserir", "insert", "url", "link"]):
+                contact_parts.append(f"LinkedIn: [https://{li}]")
         if struct.contact.github:
-            contact_parts.append(f"[{struct.contact.github}](https://{struct.contact.github.replace('https://', '')})")
+            gh = struct.contact.github.strip()
+            if gh.startswith("http") or "github.com" in gh:
+                clean_url = gh if gh.startswith("http") else f"https://{gh}"
+                contact_parts.append(f"GitHub: [{clean_url}]")
+            elif gh == "GitHub":
+                contact_parts.append("GitHub: [inserir URL]")
+            elif not any(p in gh.lower() for p in ["inserir", "insert", "url", "link"]):
+                contact_parts.append(f"GitHub: [https://{gh}]")
+        if struct.contact.portfolio:
+            port = struct.contact.portfolio.strip()
+            clean_url = port if port.startswith("http") else f"https://{port}"
+            contact_parts.append(f"Portfolio: [{clean_url}]")
 
         if contact_parts:
             lines.append(" | ".join(contact_parts))

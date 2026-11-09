@@ -812,6 +812,16 @@ body {
   margin-bottom: 4px;
 }
 
+.cv-contact-link {
+  color: #1e40af;
+  text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.cv-contact-link:hover {
+  color: #0f2c59;
+}
+
 .cv-preview-sec {
   margin-top: 12px;
   margin-bottom: 10px;

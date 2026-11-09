@@ -1,4 +1,8 @@
+import io
 import pytest
+from pypdf import PdfReader
+from docx import Document
+
 from app.markdown_parser import MarkdownResumeParser
 from app.optimizer import ResumeOptimizer
 from app.exporter import DocumentExporter
@@ -246,3 +250,48 @@ Inglês | Francês
     assert "SICREDI" in docx_full
     assert "FIQON" in docx_full
     assert "Linguagens:" in docx_full
+
+
+def test_contact_links_parsing_and_clickable_export():
+    md = """# MILENA HAMERSKI
+(42) 98883-9268 | hamerskimilena@gmail.com | LinkedIn: [https://linkedin.com/in/milena-hamerski] | GitHub: [https://github.com/milena-hamerski]
+
+## RESUMO PROFISSIONAL
+Desenvolvedora de Sistemas com foco em backend e automação.
+"""
+    struct = MarkdownResumeParser.parse(md)
+    assert struct.contact.phone == "(42) 98883-9268"
+    assert struct.contact.email == "hamerskimilena@gmail.com"
+    assert struct.contact.linkedin == "https://linkedin.com/in/milena-hamerski"
+    assert struct.contact.github == "https://github.com/milena-hamerski"
+
+    # 1. HTML Preview has active links
+    preview = DocumentExporter.generate_preview_html(struct)
+    assert 'href="mailto:hamerskimilena@gmail.com"' in preview
+    assert 'href="https://linkedin.com/in/milena-hamerski"' in preview
+    assert 'href="https://github.com/milena-hamerski"' in preview
+    assert 'class="cv-contact-link"' in preview
+
+    # 2. PDF has genuine URI annotations
+    pdf_bytes = DocumentExporter.generate_resume_pdf(struct)
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    page = reader.pages[0]
+    annots = page.get("/Annots", [])
+    assert len(annots) >= 3  # Email, LinkedIn, GitHub
+    uris = []
+    for a in annots:
+        action = a.get_object().get("/A")
+        if action and action.get("/URI"):
+            uris.append(str(action.get("/URI")))
+    assert "mailto:hamerskimilena@gmail.com" in uris
+    assert "https://linkedin.com/in/milena-hamerski" in uris
+    assert "https://github.com/milena-hamerski" in uris
+
+    # 3. DOCX has genuine external hyperlink relationships
+    docx_bytes = DocumentExporter.generate_resume_docx(struct)
+    doc = Document(io.BytesIO(docx_bytes))
+    docx_rels = [str(rel.target_ref) for rel in doc.part.rels.values() if "hyperlink" in rel.reltype]
+    assert "mailto:hamerskimilena@gmail.com" in docx_rels
+    assert "https://linkedin.com/in/milena-hamerski" in docx_rels
+    assert "https://github.com/milena-hamerski" in docx_rels
+

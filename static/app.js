@@ -555,10 +555,83 @@ function renderMarkdownPreviewLocally(mdText) {
     }
 
     // Top contact line (before any ##)
-    if (sections.length === 0 && !currentSec && (raw.includes("@") || raw.includes("|") || raw.includes("http") || raw.includes("("))) {
+    if (sections.length === 0 && !currentSec && (raw.includes("@") || raw.includes("|") || raw.includes("http") || raw.includes("(") || raw.toLowerCase().includes("linkedin") || raw.toLowerCase().includes("github"))) {
       const parts = raw.split("|").map(p => p.trim()).filter(Boolean);
       parts.forEach(p => {
-        let clean = p.replace(/\[(.*?)\]\((.*?)\)/g, "$1").replace(/\*\*/g, "").trim();
+        let clean = p.replace(/\*\*/g, "").trim();
+
+        // 1. Standard Markdown link: [Text](URL)
+        const mdLinkMatch = clean.match(/^\[(.*?)\]\((.*?)\)$/);
+        if (mdLinkMatch) {
+          const text = mdLinkMatch[1].trim();
+          let url = mdLinkMatch[2].trim();
+          if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("mailto:")) {
+            url = "https://" + url;
+          }
+          contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">${text}</a>`);
+          return;
+        }
+
+        // 2. LinkedIn: [URL] or LinkedIn: URL
+        const liMatch = clean.match(/^LinkedIn:\s*\[?(.*?)\]?$/i);
+        if (liMatch) {
+          const val = liMatch[1].trim();
+          const isPlaceholder = !val || /^(?:inserir|insert|seu-|your-|url|link)/i.test(val);
+          if (!isPlaceholder) {
+            const url = val.startsWith("http") ? val : "https://" + val;
+            contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">LinkedIn</a>`);
+            return;
+          } else {
+            contacts.push(`LinkedIn`);
+            return;
+          }
+        }
+
+        // 3. GitHub: [URL] or GitHub: URL
+        const ghMatch = clean.match(/^GitHub:\s*\[?(.*?)\]?$/i);
+        if (ghMatch) {
+          const val = ghMatch[1].trim();
+          const isPlaceholder = !val || /^(?:inserir|insert|seu-|your-|url|link)/i.test(val);
+          if (!isPlaceholder) {
+            const url = val.startsWith("http") ? val : "https://" + val;
+            contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">GitHub</a>`);
+            return;
+          } else {
+            contacts.push(`GitHub`);
+            return;
+          }
+        }
+
+        // 4. Portfolio: [URL] or Portfolio: URL
+        const portMatch = clean.match(/^(?:Portfolio|Website|Site):\s*\[?(.*?)\]?$/i);
+        if (portMatch) {
+          const val = portMatch[1].trim();
+          const isPlaceholder = !val || /^(?:inserir|insert|seu-|your-|url|link)/i.test(val);
+          if (!isPlaceholder) {
+            const url = val.startsWith("http") ? val : "https://" + val;
+            contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">Portfolio</a>`);
+            return;
+          }
+        }
+
+        // 5. Email
+        if (clean.includes("@") && !clean.includes(" ")) {
+          contacts.push(`<a href="mailto:${clean}" class="cv-contact-link">${clean}</a>`);
+          return;
+        }
+
+        // 6. Direct linkedin.com or github.com
+        if (clean.toLowerCase().includes("linkedin.com")) {
+          const url = clean.startsWith("http") ? clean : "https://" + clean;
+          contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">LinkedIn</a>`);
+          return;
+        }
+        if (clean.toLowerCase().includes("github.com")) {
+          const url = clean.startsWith("http") ? clean : "https://" + clean;
+          contacts.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">GitHub</a>`);
+          return;
+        }
+
         if (clean) contacts.push(clean);
       });
       continue;
@@ -865,7 +938,7 @@ function initManualReview() {
   // Example template loader
   btnLoadTemplate.addEventListener("click", () => {
     editor.value = `# MARIANA COSTA SILVA
-São Paulo - SP | mariana.silva@email.com | (11) 98765-4321 | [linkedin.com/in/marianacosta](https://linkedin.com/in/marianacosta) | [github.com/marianadev](https://github.com/marianadev)
+São Paulo - SP | (11) 98765-4321 | mariana.silva@email.com | LinkedIn: [https://linkedin.com/in/marianacosta] | GitHub: [https://github.com/marianadev]
 
 ## Resumo Profissional
 Engenheira de Software com 5 anos de experiência especializada em arquitetura de microsserviços, processamento de dados em tempo real e liderança técnica de equipes ágeis.

@@ -123,6 +123,51 @@ class MarkdownResumeParser:
         return None
 
     @classmethod
+    def _extract_profile_url(cls, text: str, label: str) -> Optional[str]:
+        """Extracts profile URL from markdown links, bracketed links, or plain domain URLs."""
+        kw = label.lower()
+        domain = "linkedin.com" if kw == "linkedin" else ("github.com" if kw == "github" else None)
+
+        # 1. Standard markdown link with domain in target: [Any Text](https://...domain...)
+        if domain:
+            m = re.search(rf"\[(.*?)\]\((https?://[^\s)]*{domain}[^\s)]*)\)", text, re.IGNORECASE)
+            if m:
+                return m.group(2).strip()
+
+        # 2. Standard markdown link with label: [LinkedIn](https://...)
+        m = re.search(rf"\[{label}\]\((https?://[^\s)]+)\)", text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+
+        # 3. Label: [url] or Label: url (including [https://...] or [http://...])
+        m = re.search(rf"{label}:\s*\[?(https?://[^\s\]|)]+)\]?", text, re.IGNORECASE)
+        if m:
+            url = m.group(1).strip().rstrip("]")
+            if not re.search(r"(?:inserir|insert|seu-|your-|exemplo|example|link|url)", url, re.IGNORECASE):
+                return url
+
+        # 4. Label: [domain/...] or Label: domain/...
+        m = re.search(rf"{label}:\s*\[?([a-zA-Z0-9-_.]+(?:\.com|\.io|\.dev|\.org|\.me|\.net|\.br)[^\s\]|]*)\]?", text, re.IGNORECASE)
+        if m:
+            url = m.group(1).strip().rstrip("]")
+            if not re.search(r"(?:inserir|insert|seu-|your-|exemplo|example|link|url)", url, re.IGNORECASE):
+                return ("https://" if not url.startswith("http") else "") + url
+
+        # 5. Standalone domain url e.g. linkedin.com/in/... or github.com/...
+        if domain == "linkedin.com":
+            m = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9-_/]+", text, re.IGNORECASE)
+            if m:
+                url = m.group(0).strip()
+                return ("https://" if not url.startswith("http") else "") + url
+        elif domain == "github.com":
+            m = re.search(r"(?:https?://)?(?:www\.)?github\.com/[a-zA-Z0-9-_/]+", text, re.IGNORECASE)
+            if m:
+                url = m.group(0).strip()
+                return ("https://" if not url.startswith("http") else "") + url
+
+        return None
+
+    @classmethod
     def _parse_contact(cls, text: str, contact: ResumeContact) -> ResumeContact:
         for line in text.split("\n"):
             clean = line.replace("*", "").replace("#", "").strip()
@@ -141,26 +186,31 @@ class MarkdownResumeParser:
             contact.phone = phone_match.group(0).strip()
 
         # LinkedIn
-        li_md = re.search(r"\[.*?\]\((https?://.*?linkedin\.com.*?)\)", text, re.IGNORECASE)
-        if li_md:
-            contact.linkedin = li_md.group(1).strip()
-        else:
-            li_plain = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9-_]+", text, re.IGNORECASE)
-            if li_plain:
-                contact.linkedin = li_plain.group(0).strip()
-            elif "linkedin" in text.lower():
-                contact.linkedin = "LinkedIn"
+        li_url = cls._extract_profile_url(text, "LinkedIn")
+        if li_url:
+            contact.linkedin = li_url
+        elif re.search(r"linkedin:\s*\[?(?:inserir|insert)\s*(?:url|link)\]?", text, re.IGNORECASE):
+            contact.linkedin = ""
+        elif re.search(r"\blinkedin\b", text, re.IGNORECASE):
+            contact.linkedin = "LinkedIn"
 
         # GitHub
-        gh_md = re.search(r"\[.*?\]\((https?://.*?github\.com.*?)\)", text, re.IGNORECASE)
-        if gh_md:
-            contact.github = gh_md.group(1).strip()
-        else:
-            gh_plain = re.search(r"(?:https?://)?(?:www\.)?github\.com/[a-zA-Z0-9-_]+", text, re.IGNORECASE)
-            if gh_plain:
-                contact.github = gh_plain.group(0).strip()
-            elif "github" in text.lower():
-                contact.github = "GitHub"
+        gh_url = cls._extract_profile_url(text, "GitHub")
+        if gh_url:
+            contact.github = gh_url
+        elif re.search(r"github:\s*\[?(?:inserir|insert)\s*(?:url|link)\]?", text, re.IGNORECASE):
+            contact.github = ""
+        elif re.search(r"\bgithub\b", text, re.IGNORECASE):
+            contact.github = "GitHub"
+
+        # Portfolio / Website
+        portfolio_url = (
+            cls._extract_profile_url(text, "Portfolio")
+            or cls._extract_profile_url(text, "Website")
+            or cls._extract_profile_url(text, "Site")
+        )
+        if portfolio_url:
+            contact.portfolio = portfolio_url
 
         # Location
         loc_patterns = [

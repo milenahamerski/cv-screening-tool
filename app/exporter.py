@@ -1,12 +1,13 @@
 """Document Exporter for DOCX, PDF, and Comparison Reports with refined executive styling."""
 
 import io
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
+from docx.opc.constants import RELATIONSHIP_TYPE
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -14,7 +15,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
 
-from app.models import ResumeStructured, ComparisonResult, DiagnosisResult
+from app.models import ResumeStructured, ResumeContact, ComparisonResult, DiagnosisResult
 
 
 class DocumentExporter:
@@ -29,6 +30,79 @@ class DocumentExporter:
         en_c = sum(1 for w in en_words if w in s_lower)
         pt_c = sum(1 for w in pt_words if w in s_lower)
         return "en" if en_c > pt_c else "pt"
+
+    @classmethod
+    def _build_contact_tokens(cls, contact: ResumeContact) -> List[Tuple[str, Optional[str]]]:
+        """Builds list of (display_label, url_or_none) for contact bar rendering across DOCX, PDF, and HTML."""
+        tokens: List[Tuple[str, Optional[str]]] = []
+        if contact.location:
+            tokens.append((contact.location.strip(), None))
+        if contact.phone:
+            tokens.append((contact.phone.strip(), None))
+        if contact.email:
+            email_clean = contact.email.strip()
+            url = f"mailto:{email_clean}" if "@" in email_clean else None
+            tokens.append((email_clean, url))
+        if contact.linkedin:
+            li = contact.linkedin.strip()
+            if li.startswith("http") or "linkedin.com" in li:
+                url = li if li.startswith("http") else f"https://{li}"
+                tokens.append(("LinkedIn", url))
+            elif li == "LinkedIn":
+                tokens.append(("LinkedIn", None))
+            elif not any(p in li.lower() for p in ["inserir", "insert", "url", "link"]):
+                url = f"https://{li}"
+                tokens.append(("LinkedIn", url))
+        if contact.github:
+            gh = contact.github.strip()
+            if gh.startswith("http") or "github.com" in gh:
+                url = gh if gh.startswith("http") else f"https://{gh}"
+                tokens.append(("GitHub", url))
+            elif gh == "GitHub":
+                tokens.append(("GitHub", None))
+            elif not any(p in gh.lower() for p in ["inserir", "insert", "url", "link"]):
+                url = f"https://{gh}"
+                tokens.append(("GitHub", url))
+        if contact.portfolio:
+            port = contact.portfolio.strip()
+            if port.startswith("http") or "." in port:
+                url = port if port.startswith("http") else f"https://{port}"
+                tokens.append(("Portfolio", url))
+        return tokens
+
+    @staticmethod
+    def _add_docx_hyperlink(paragraph, url: str, text: str, color_hex: str = "1E40AF", underline: bool = True):
+        """Adds a genuine clickable Word hyperlink element (w:hyperlink) to a paragraph."""
+        try:
+            part = paragraph.part
+            r_id = part.relate_to(url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+            hyperlink = parse_xml(
+                f'<w:hyperlink xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                f'r:id="{r_id}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>'
+            )
+            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>')
+            new_rPr = parse_xml(f'<w:rPr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>')
+            if color_hex:
+                c = parse_xml(f'<w:color xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" w:val="{color_hex}"/>')
+                new_rPr.append(c)
+            if underline:
+                u = parse_xml(f'<w:u xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" w:val="single"/>')
+                new_rPr.append(u)
+            sz = parse_xml(f'<w:sz xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" w:val="18"/>')
+            new_rPr.append(sz)
+            new_run.append(new_rPr)
+            escaped_text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            new_text = parse_xml(f'<w:t xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{escaped_text}</w:t>')
+            new_run.append(new_text)
+            hyperlink.append(new_run)
+            paragraph._element.append(hyperlink)
+            return hyperlink
+        except Exception:
+            run = paragraph.add_run(text)
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+            run.underline = underline
+            return run
 
     # -------------------------------------------------------------
     # 1. OPTIMIZED RESUME IN DOCX (Single-column, fully editable)
@@ -64,26 +138,23 @@ class DocumentExporter:
         run_name.font.size = Pt(18)
         run_name.font.color.rgb = RGBColor(0x0F, 0x2C, 0x59)
 
-        # Contact line
-        contact_items = []
-        if resume.contact.location:
-            contact_items.append(resume.contact.location)
-        if resume.contact.phone:
-            contact_items.append(resume.contact.phone)
-        if resume.contact.email:
-            contact_items.append(resume.contact.email)
-        if resume.contact.linkedin:
-            contact_items.append(resume.contact.linkedin)
-        if resume.contact.github:
-            contact_items.append(resume.contact.github)
-
-        if contact_items:
+        # Contact line with clickable hyperlinks
+        contact_tokens = cls._build_contact_tokens(resume.contact)
+        if contact_tokens:
             cont_p = doc.add_paragraph()
             cont_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             cont_p.paragraph_format.space_after = Pt(10)
-            run_cont = cont_p.add_run("  •  ".join(contact_items))
-            run_cont.font.size = Pt(9)
-            run_cont.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
+            for idx, (label, url) in enumerate(contact_tokens):
+                if idx > 0:
+                    sep = cont_p.add_run("   •   ")
+                    sep.font.size = Pt(9)
+                    sep.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
+                if url:
+                    cls._add_docx_hyperlink(cont_p, url, label, color_hex="1E40AF", underline=True)
+                else:
+                    run = cont_p.add_run(label)
+                    run.font.size = Pt(9)
+                    run.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
 
         # Helper for adding section headings with stylish bottom border
         def add_heading(title: str):
@@ -309,21 +380,16 @@ class DocumentExporter:
         story.append(Paragraph(name_text, name_style))
         story.append(Spacer(1, 2))
 
-        # Contact Info
-        contact_items = []
-        if resume.contact.location:
-            contact_items.append(resume.contact.location)
-        if resume.contact.phone:
-            contact_items.append(resume.contact.phone)
-        if resume.contact.email:
-            contact_items.append(resume.contact.email)
-        if resume.contact.linkedin:
-            contact_items.append(resume.contact.linkedin)
-        if resume.contact.github:
-            contact_items.append(resume.contact.github)
-
-        if contact_items:
-            story.append(Paragraph(" &nbsp;•&nbsp; ".join(contact_items), contact_style))
+        # Contact Info with clickable hyperlinks
+        contact_tokens = cls._build_contact_tokens(resume.contact)
+        if contact_tokens:
+            parts = []
+            for label, url in contact_tokens:
+                if url:
+                    parts.append(f'<a href="{url}" color="#1e40af"><u>{label}</u></a>')
+                else:
+                    parts.append(label)
+            story.append(Paragraph(" &nbsp;•&nbsp; ".join(parts), contact_style))
             story.append(Spacer(1, 4))
 
         story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0f2c59"), spaceAfter=5))
@@ -421,19 +487,15 @@ class DocumentExporter:
         is_en = cls._detect_resume_language(resume) == "en"
         name = (resume.contact.name or ("PROFESSIONAL RESUME" if is_en else "SEU NOME COMPLETO")).upper()
 
-        contacts = []
-        if resume.contact.location:
-            contacts.append(resume.contact.location)
-        if resume.contact.phone:
-            contacts.append(resume.contact.phone)
-        if resume.contact.email:
-            contacts.append(resume.contact.email)
-        if resume.contact.linkedin:
-            contacts.append(resume.contact.linkedin)
-        if resume.contact.github:
-            contacts.append(resume.contact.github)
+        contact_tokens = cls._build_contact_tokens(resume.contact)
+        contact_parts = []
+        for label, url in contact_tokens:
+            if url:
+                contact_parts.append(f'<a href="{url}" target="_blank" rel="noopener noreferrer" class="cv-contact-link">{label}</a>')
+            else:
+                contact_parts.append(label)
 
-        contact_line = " &nbsp;•&nbsp; ".join(contacts)
+        contact_line = " &nbsp;•&nbsp; ".join(contact_parts)
 
         sec_summary = "PROFESSIONAL SUMMARY" if is_en else "RESUMO PROFISSIONAL"
         sec_experience = "WORK EXPERIENCE" if is_en else "EXPERIÊNCIA PROFISSIONAL"
