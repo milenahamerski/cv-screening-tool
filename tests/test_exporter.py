@@ -64,6 +64,56 @@ def test_export_docx_valid_and_editable():
     assert "Bacharelado em Ciência da Computação" in full_text
     assert "Python" in full_text
 
+    # Validate paragraph alignment (justified text for summary and bullets)
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    justified_paragraphs = [p for p in doc.paragraphs if p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY]
+    assert len(justified_paragraphs) >= 2  # summary and bullet points are justified
+
+
+def test_export_docx_and_pdf_english_headings():
+    resume_en = ResumeStructured(
+        contact=ResumeContact(
+            name="John Doe",
+            email="john.doe@example.com",
+            phone="+1 555-0199",
+            location="San Francisco, CA"
+        ),
+        summary="Senior Software Engineer with 7 years of experience in distributed systems and cloud services.",
+        experiences=[
+            ResumeExperience(
+                title="Lead Software Engineer",
+                company="Tech Corp",
+                period="2020 - Present",
+                bullets=[
+                    "Architected high-throughput microservices using Go and PostgreSQL handling 50k RPS.",
+                    "Optimized cloud infrastructure reducing AWS operational expenses by 35%."
+                ]
+            )
+        ],
+        education=[
+            ResumeEducation(
+                degree="B.S. in Computer Science",
+                institution="Stanford University",
+                period="2013 - 2017"
+            )
+        ],
+        skills=["Python", "Go", "Docker", "Kubernetes", "AWS"]
+    )
+
+    docx_bytes = DocumentExporter.generate_resume_docx(resume_en)
+    doc = Document(io.BytesIO(docx_bytes))
+    docx_text = "\n".join([p.text for p in doc.paragraphs])
+    assert "WORK EXPERIENCE" in docx_text
+    assert "EDUCATION" in docx_text
+    assert "SKILLS & TECHNOLOGIES" in docx_text
+
+    pdf_bytes = DocumentExporter.generate_resume_pdf(resume_en)
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    pdf_text = reader.pages[0].extract_text()
+    assert "WORK EXPERIENCE" in pdf_text
+    assert "EDUCATION" in pdf_text
+
+
 
 def test_export_pdf_valid_and_selectable():
     resume = create_mock_structured()

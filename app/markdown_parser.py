@@ -108,17 +108,17 @@ class MarkdownResumeParser:
     @staticmethod
     def _identify_section(title: str) -> Optional[str]:
         t = title.lower()
-        if any(k in t for k in ["resumo", "perfil", "sobre mim", "summary", "objective"]):
+        if any(k in t for k in ["resumo", "perfil", "sobre mim", "summary", "objective", "profile", "about me"]):
             return "resumo"
-        if any(k in t for k in ["experiência", "experiencia", "histórico", "atuação", "experience"]):
+        if any(k in t for k in ["experiência", "experiencia", "histórico", "atuação", "experience", "employment", "work history"]):
             return "experiencia"
-        if any(k in t for k in ["formação", "formacao", "educação", "educacao", "escolaridade", "academic", "graduação"]):
+        if any(k in t for k in ["formação", "formacao", "educação", "educacao", "escolaridade", "academic", "education", "graduação"]):
             return "formacao"
-        if any(k in t for k in ["habilidade", "competência", "competencia", "tecnologia", "skills", "ferramenta"]):
+        if any(k in t for k in ["habilidade", "competência", "competencia", "tecnologia", "skills", "ferramenta", "technologies", "competencies"]):
             return "habilidades"
-        if any(k in t for k in ["certifica", "curso", "projeto"]):
+        if any(k in t for k in ["certifica", "curso", "projeto", "courses", "certificates", "projects"]):
             return "certificacoes"
-        if any(k in t for k in ["idioma", "língua", "lingua", "languages"]):
+        if any(k in t for k in ["idioma", "língua", "lingua", "language", "languages"]):
             return "idiomas"
         return None
 

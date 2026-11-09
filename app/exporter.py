@@ -12,12 +12,23 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
 
 from app.models import ResumeStructured, ComparisonResult, DiagnosisResult
 
 
 class DocumentExporter:
-    """Generates professional, aesthetically polished ('bonitinho'), ATS-compliant DOCX and PDF documents."""
+    """Generates professional, aesthetically polished ATS-compliant DOCX and PDF documents."""
+
+    @classmethod
+    def _detect_resume_language(cls, resume: ResumeStructured) -> str:
+        sample = f"{resume.summary} {' '.join(exp.title for exp in resume.experiences)} {' '.join(' '.join(exp.bullets) for exp in resume.experiences)}"
+        s_lower = sample.lower()
+        en_words = ["experience", "developer", "engineer", "developed", "led", "managed", "designed", "built", "education", "skills", "with", "years"]
+        pt_words = ["experiência", "desenvolvedor", "engenheiro", "desenvolveu", "liderou", "gerenciou", "formação", "habilidades", "com", "anos"]
+        en_c = sum(1 for w in en_words if w in s_lower)
+        pt_c = sum(1 for w in pt_words if w in s_lower)
+        return "en" if en_c > pt_c else "pt"
 
     # -------------------------------------------------------------
     # 1. OPTIMIZED RESUME IN DOCX (Single-column, fully editable)
@@ -25,6 +36,7 @@ class DocumentExporter:
     @classmethod
     def generate_resume_docx(cls, resume: ResumeStructured) -> bytes:
         doc = Document()
+        is_en = cls._detect_resume_language(resume) == "en"
 
         # Set single-column standard margins
         for section in doc.sections:
@@ -46,7 +58,7 @@ class DocumentExporter:
         name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         name_p.paragraph_format.space_before = Pt(0)
         name_p.paragraph_format.space_after = Pt(2)
-        name_str = (resume.contact.name or "CURRÍCULO PROFISSIONAL").upper()
+        name_str = (resume.contact.name or ("PROFESSIONAL RESUME" if is_en else "CURRÍCULO PROFISSIONAL")).upper()
         run_name = name_p.add_run(name_str)
         run_name.bold = True
         run_name.font.size = Pt(18)
@@ -89,25 +101,26 @@ class DocumentExporter:
             pBdr = parse_xml(f'<w:pBdr {nsdecls("w")}><w:bottom w:val="single" w:sz="6" w:space="2" w:color="0F2C59"/></w:pBdr>')
             pPr.append(pBdr)
 
-        # Resumo Profissional
+        # Resumo Profissional / Professional Summary (Justified)
         if resume.summary:
-            add_heading("Resumo Profissional")
+            add_heading("Professional Summary" if is_en else "Resumo Profissional")
             sum_p = doc.add_paragraph()
+            sum_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             sum_p.paragraph_format.space_after = Pt(6)
             sum_p.paragraph_format.line_spacing = 1.15
             run_sum = sum_p.add_run(resume.summary)
             run_sum.font.size = Pt(9.5)
 
-        # Experiência Profissional
+        # Experiência Profissional / Work Experience (Justified Bullets)
         if resume.experiences:
-            add_heading("Experiência Profissional")
+            add_heading("Work Experience" if is_en else "Experiência Profissional")
             for exp in resume.experiences:
                 job_p = doc.add_paragraph()
                 job_p.paragraph_format.space_before = Pt(6)
                 job_p.paragraph_format.space_after = Pt(1)
                 job_p.paragraph_format.keep_with_next = True
 
-                title_run = job_p.add_run(exp.title or "Cargo")
+                title_run = job_p.add_run(exp.title or ("Role" if is_en else "Cargo"))
                 title_run.bold = True
                 title_run.font.size = Pt(10)
                 title_run.font.color.rgb = RGBColor(0x11, 0x18, 0x27)
@@ -124,22 +137,23 @@ class DocumentExporter:
 
                 for b in exp.bullets:
                     bp = doc.add_paragraph(style="List Bullet")
+                    bp.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                     bp.paragraph_format.space_before = Pt(1)
                     bp.paragraph_format.space_after = Pt(2)
                     bp.paragraph_format.line_spacing = 1.12
                     brun = bp.add_run(b)
                     brun.font.size = Pt(9.5)
 
-        # Formação Acadêmica
+        # Formação Acadêmica / Education (Justified)
         if resume.education:
-            add_heading("Formação Acadêmica")
+            add_heading("Education" if is_en else "Formação Acadêmica")
             for edu in resume.education:
                 edu_p = doc.add_paragraph()
                 edu_p.paragraph_format.space_before = Pt(5)
                 edu_p.paragraph_format.space_after = Pt(1)
                 edu_p.paragraph_format.keep_with_next = True
 
-                d_run = edu_p.add_run(edu.degree or "Curso")
+                d_run = edu_p.add_run(edu.degree or ("Degree" if is_en else "Curso"))
                 d_run.bold = True
                 d_run.font.size = Pt(10)
 
@@ -154,6 +168,7 @@ class DocumentExporter:
 
                 if edu.details:
                     det_p = doc.add_paragraph()
+                    det_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                     det_p.paragraph_format.space_before = Pt(2)
                     det_p.paragraph_format.space_after = Pt(2)
                     det_run = det_p.add_run(edu.details)
@@ -163,16 +178,18 @@ class DocumentExporter:
 
                 for b in edu.bullets:
                     bp = doc.add_paragraph(style="List Bullet")
+                    bp.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                     bp.paragraph_format.space_before = Pt(1)
                     bp.paragraph_format.space_after = Pt(1)
                     brun = bp.add_run(b)
                     brun.font.size = Pt(9)
 
-        # Habilidades e Tecnologias (Categorizadas ou Lista Simples)
+        # Habilidades e Tecnologias / Skills
         if resume.skill_categories:
-            add_heading("Habilidades e Tecnologias")
+            add_heading("Skills & Technologies" if is_en else "Habilidades e Tecnologias")
             for cat, items in resume.skill_categories.items():
                 sk_p = doc.add_paragraph()
+                sk_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                 sk_p.paragraph_format.space_before = Pt(2)
                 sk_p.paragraph_format.space_after = Pt(2)
                 run_cat = sk_p.add_run(f"{cat}: ")
@@ -182,25 +199,27 @@ class DocumentExporter:
                 run_items = sk_p.add_run(" • ".join(items))
                 run_items.font.size = Pt(9.5)
         elif resume.skills:
-            add_heading("Habilidades e Tecnologias")
+            add_heading("Skills & Technologies" if is_en else "Habilidades e Tecnologias")
             sk_p = doc.add_paragraph()
+            sk_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             sk_p.paragraph_format.space_after = Pt(6)
             sk_run = sk_p.add_run(" • ".join(resume.skills))
             sk_run.font.size = Pt(9.5)
 
-        # Certificações e Cursos
+        # Certificações e Cursos / Certifications & Courses
         if resume.certifications:
-            add_heading("Certificações e Cursos")
+            add_heading("Certifications & Courses" if is_en else "Certificações e Cursos")
             for cert in resume.certifications:
                 cp = doc.add_paragraph(style="List Bullet")
+                cp.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                 cp.paragraph_format.space_before = Pt(1)
                 cp.paragraph_format.space_after = Pt(2)
                 c_run = cp.add_run(cert)
                 c_run.font.size = Pt(9.5)
 
-        # Idiomas
+        # Idiomas / Languages
         if resume.languages:
-            add_heading("Idiomas")
+            add_heading("Languages" if is_en else "Idiomas")
             lang_p = doc.add_paragraph()
             lang_p.paragraph_format.space_after = Pt(6)
             lang_run = lang_p.add_run("  •  ".join(resume.languages))
@@ -215,6 +234,7 @@ class DocumentExporter:
     # -------------------------------------------------------------
     @classmethod
     def generate_resume_pdf(cls, resume: ResumeStructured) -> bytes:
+        is_en = cls._detect_resume_language(resume) == "en"
         buf = io.BytesIO()
         doc = SimpleDocTemplate(
             buf,
@@ -233,7 +253,7 @@ class DocumentExporter:
             fontName="Helvetica-Bold",
             fontSize=16,
             leading=20,
-            alignment=1,  # Center
+            alignment=TA_CENTER,
             textColor=colors.HexColor("#0f2c59")
         )
 
@@ -243,7 +263,7 @@ class DocumentExporter:
             fontName="Helvetica",
             fontSize=8.5,
             leading=12,
-            alignment=1,  # Center
+            alignment=TA_CENTER,
             textColor=colors.HexColor("#4b5563")
         )
 
@@ -265,6 +285,7 @@ class DocumentExporter:
             fontName="Helvetica",
             fontSize=8.5,
             leading=11.5,
+            alignment=TA_JUSTIFY,
             textColor=colors.HexColor("#1f2937")
         )
 
@@ -274,6 +295,7 @@ class DocumentExporter:
             fontName="Helvetica",
             fontSize=8.5,
             leading=11.5,
+            alignment=TA_JUSTIFY,
             leftIndent=12,
             firstLineIndent=-8,
             textColor=colors.HexColor("#1f2937"),
@@ -283,7 +305,7 @@ class DocumentExporter:
         story = []
 
         # Header: Name
-        name_text = (resume.contact.name or "CURRÍCULO PROFISSIONAL").upper()
+        name_text = (resume.contact.name or ("PROFESSIONAL RESUME" if is_en else "CURRÍCULO PROFISSIONAL")).upper()
         story.append(Paragraph(name_text, name_style))
         story.append(Spacer(1, 2))
 
@@ -312,16 +334,16 @@ class DocumentExporter:
 
         # Summary
         if resume.summary:
-            add_pdf_heading("Resumo Profissional")
+            add_pdf_heading("Professional Summary" if is_en else "Resumo Profissional")
             story.append(Paragraph(resume.summary, body_style))
             story.append(Spacer(1, 3))
 
         # Experience
         if resume.experiences:
-            add_pdf_heading("Experiência Profissional")
+            add_pdf_heading("Work Experience" if is_en else "Experiência Profissional")
             for exp in resume.experiences:
                 exp_flowables = []
-                exp_header = f"<b>{exp.title or 'Cargo'}</b>"
+                exp_header = f"<b>{exp.title or ('Role' if is_en else 'Cargo')}</b>"
                 if exp.company:
                     exp_header += f" &nbsp;|&nbsp; <font color='#1e40af'><b>{exp.company}</b></font>"
                 if exp.period:
@@ -336,7 +358,7 @@ class DocumentExporter:
 
         # Education
         if resume.education:
-            add_pdf_heading("Formação Acadêmica")
+            add_pdf_heading("Education" if is_en else "Formação Acadêmica")
             for edu in resume.education:
                 edu_flowables = []
                 edu_line = f"<b>{edu.degree}</b>"
@@ -357,7 +379,7 @@ class DocumentExporter:
 
         # Skills & Categories
         if resume.skill_categories:
-            add_pdf_heading("Habilidades e Tecnologias")
+            add_pdf_heading("Skills & Technologies" if is_en else "Habilidades e Tecnologias")
             skills_flowables = []
             for cat, items in resume.skill_categories.items():
                 cat_line = f"<b>{cat}:</b> &nbsp;" + " &nbsp;•&nbsp; ".join(items)
@@ -366,14 +388,14 @@ class DocumentExporter:
             story.append(KeepTogether(skills_flowables))
             story.append(Spacer(1, 2))
         elif resume.skills:
-            add_pdf_heading("Habilidades e Tecnologias")
+            add_pdf_heading("Skills & Technologies" if is_en else "Habilidades e Tecnologias")
             skills_line = " &nbsp;•&nbsp; ".join(resume.skills)
             story.append(Paragraph(skills_line, body_style))
             story.append(Spacer(1, 3))
 
         # Certifications
         if resume.certifications:
-            add_pdf_heading("Certificações e Cursos")
+            add_pdf_heading("Certifications & Courses" if is_en else "Certificações e Cursos")
             for cert in resume.certifications:
                 story.append(Paragraph(f"• {cert}", bullet_style))
             story.append(Spacer(1, 3))
@@ -381,7 +403,8 @@ class DocumentExporter:
         # Languages
         if resume.languages:
             lang_flowables = []
-            lang_flowables.append(Paragraph("IDIOMAS".upper(), heading_style))
+            lang_title = "Languages" if is_en else "Idiomas"
+            lang_flowables.append(Paragraph(lang_title.upper(), heading_style))
             lang_flowables.append(HRFlowable(width="100%", thickness=0.6, color=colors.HexColor("#0f2c59"), spaceAfter=4))
             lang_flowables.append(Paragraph(" &nbsp;•&nbsp; ".join(resume.languages), body_style))
             story.append(KeepTogether(lang_flowables))
@@ -390,12 +413,13 @@ class DocumentExporter:
         return buf.getvalue()
 
     # -------------------------------------------------------------
-    # 3. LIVE BEAUTIFUL HTML PREVIEW ("CV Bonitinho")
+    # 3. INTERACTIVE HTML CV PREVIEW (FAITHFUL TO PDF/DOCX)
     # -------------------------------------------------------------
     @classmethod
     def generate_preview_html(cls, resume: ResumeStructured) -> str:
         """Renders an executive, realistic A4-style interactive HTML CV preview strictly matching the downloaded PDF."""
-        name = (resume.contact.name or "SEU NOME COMPLETO").upper()
+        is_en = cls._detect_resume_language(resume) == "en"
+        name = (resume.contact.name or ("PROFESSIONAL RESUME" if is_en else "SEU NOME COMPLETO")).upper()
 
         contacts = []
         if resume.contact.location:
@@ -410,6 +434,13 @@ class DocumentExporter:
             contacts.append(resume.contact.github)
 
         contact_line = " &nbsp;•&nbsp; ".join(contacts)
+
+        sec_summary = "PROFESSIONAL SUMMARY" if is_en else "RESUMO PROFISSIONAL"
+        sec_experience = "WORK EXPERIENCE" if is_en else "EXPERIÊNCIA PROFISSIONAL"
+        sec_education = "EDUCATION" if is_en else "FORMAÇÃO ACADÊMICA"
+        sec_skills = "SKILLS & TECHNOLOGIES" if is_en else "HABILIDADES E TECNOLOGIAS"
+        sec_certifications = "CERTIFICATIONS & COURSES" if is_en else "CERTIFICAÇÕES E CURSOS"
+        sec_languages = "LANGUAGES" if is_en else "IDIOMAS"
 
         exp_html = ""
         if resume.experiences:

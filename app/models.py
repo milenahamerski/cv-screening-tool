@@ -25,6 +25,7 @@ class DiagnosisResult(BaseModel):
     word_count: int
     has_extractable_text: bool
     detected_sections: List[str] = Field(default_factory=list)
+    language: str = "pt"
 
 
 class ResumeContact(BaseModel):

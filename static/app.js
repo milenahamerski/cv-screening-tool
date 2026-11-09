@@ -132,6 +132,17 @@ function renderInitialDiagnosis(diag) {
   const section = document.getElementById("section-diagnosis");
   section.classList.remove("hidden");
 
+  // Language badge
+  const langBadge = document.getElementById("init-lang-badge");
+  if (langBadge) {
+    if (diag.language === "en") {
+      langBadge.textContent = "Inglês (ATS Global)";
+    } else {
+      langBadge.textContent = "Português (ATS)";
+    }
+    langBadge.style.display = "inline-block";
+  }
+
   // Overall Score
   document.getElementById("init-score-val").textContent = diag.overall_score;
   document.getElementById("init-score-percent").textContent = `${diag.overall_score}%`;
@@ -298,6 +309,17 @@ async function runOptimizationFlow() {
 function renderPostInspection(postDiag, preservation) {
   const sec = document.getElementById("section-post-inspection");
   sec.classList.remove("hidden");
+
+  // Language badge
+  const postLangBadge = document.getElementById("post-lang-badge");
+  if (postLangBadge) {
+    if (postDiag.language === "en") {
+      postLangBadge.textContent = "Inglês (ATS Global)";
+    } else {
+      postLangBadge.textContent = "Português (ATS)";
+    }
+    postLangBadge.style.display = "inline-block";
+  }
 
   // Preservation bullet update
   const presBullet = document.getElementById("preservation-check-bullet");
