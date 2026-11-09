@@ -1,12 +1,20 @@
 """Robust Markdown Resume Parser for CV Optimizer."""
 
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from app.models import ResumeStructured, ResumeContact, ResumeExperience, ResumeEducation
+
+# Complete regex for full and abbreviated months in Portuguese and English
+MONTHS_PATTERN = r"(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)"
+DATE_PATTERN = rf"(\b(19\d{{2}}|20\d{{2}})\b|\b{MONTHS_PATTERN}\b|\b(atual|presente|em\s+andamento|atualmente|current|present)\b)"
+
+
+def is_date_string(s: str) -> bool:
+    return bool(re.search(DATE_PATTERN, s, re.IGNORECASE))
 
 
 class MarkdownResumeParser:
-    """Parses standard Markdown resumes into ResumeStructured models."""
+    """Parses standard and flexible Markdown resumes into ResumeStructured models."""
 
     @classmethod
     def parse(cls, md_text: str) -> ResumeStructured:
@@ -15,6 +23,7 @@ class MarkdownResumeParser:
         experiences: List[ResumeExperience] = []
         education: List[ResumeEducation] = []
         skills: List[str] = []
+        skill_categories: Dict[str, List[str]] = {}
         certifications: List[str] = []
         languages: List[str] = []
 
@@ -56,11 +65,9 @@ class MarkdownResumeParser:
                     current_section = "outros"
                     continue
             elif sec_type and len(clean_heading) < 40 and not line_str.startswith(("-", "•", "*", "+")):
-                # Plain text uppercase section header like "EXPERIÊNCIA PROFISSIONAL"
                 current_section = sec_type
                 continue
 
-            # Line belongs to current active section
             section_lines[current_section].append(line_str)
 
         # Parse contact details from topo lines
@@ -78,7 +85,7 @@ class MarkdownResumeParser:
         education = cls._parse_education(section_lines["formacao"])
 
         # Parse skills
-        skills = cls._parse_skills(section_lines["habilidades"])
+        skill_categories, skills = cls._parse_skills(section_lines["habilidades"])
 
         # Parse certifications
         certifications = cls._parse_simple_list(section_lines["certificacoes"])
@@ -92,6 +99,7 @@ class MarkdownResumeParser:
             experiences=experiences,
             education=education,
             skills=skills,
+            skill_categories=skill_categories,
             certifications=certifications,
             languages=languages,
             additional=[]
@@ -112,7 +120,7 @@ class MarkdownResumeParser:
             return "certificacoes"
         if any(k in t for k in ["idioma", "língua", "lingua", "languages"]):
             return "idiomas"
-        return None  # Crucial: return None so that subheadings like ### Job do not switch section!
+        return None
 
     @classmethod
     def _parse_contact(cls, text: str, contact: ResumeContact) -> ResumeContact:
@@ -132,7 +140,7 @@ class MarkdownResumeParser:
         if phone_match:
             contact.phone = phone_match.group(0).strip()
 
-        # LinkedIn (extract markdown link [LinkedIn](url) or plain URL)
+        # LinkedIn
         li_md = re.search(r"\[.*?\]\((https?://.*?linkedin\.com.*?)\)", text, re.IGNORECASE)
         if li_md:
             contact.linkedin = li_md.group(1).strip()
@@ -140,6 +148,8 @@ class MarkdownResumeParser:
             li_plain = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9-_]+", text, re.IGNORECASE)
             if li_plain:
                 contact.linkedin = li_plain.group(0).strip()
+            elif "linkedin" in text.lower():
+                contact.linkedin = "LinkedIn"
 
         # GitHub
         gh_md = re.search(r"\[.*?\]\((https?://.*?github\.com.*?)\)", text, re.IGNORECASE)
@@ -149,11 +159,13 @@ class MarkdownResumeParser:
             gh_plain = re.search(r"(?:https?://)?(?:www\.)?github\.com/[a-zA-Z0-9-_]+", text, re.IGNORECASE)
             if gh_plain:
                 contact.github = gh_plain.group(0).strip()
+            elif "github" in text.lower():
+                contact.github = "GitHub"
 
         # Location
         loc_patterns = [
             r"\b([A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+)?\s*[-/,\s]+\s*[A-Z]{2})\b",
-            r"\b(São Paulo|Rio de Janeiro|Curitiba|Belo Horizonte|Porto Alegre|Salvador|Brasília|Campinas|Florianópolis|Recife|Fortaleza)\b",
+            r"\b(São Paulo|Rio de Janeiro|Curitiba|Belo Horizonte|Porto Alegre|Salvador|Brasília|Campinas|Florianópolis|Recife|Fortaleza|Guarapuava)\b",
             r"\b(Remoto|Híbrido|Presencial)\b"
         ]
         for pat in loc_patterns:
@@ -168,43 +180,82 @@ class MarkdownResumeParser:
     def _parse_experiences(cls, lines: List[str]) -> List[ResumeExperience]:
         experiences: List[ResumeExperience] = []
         current_exp: Optional[ResumeExperience] = None
-
-        date_pattern = r"(\b(19\d{2}|20\d{2})\b|\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|presente|atual|atualmente)\b)"
+        pending_company = ""
 
         for line in lines:
             line_clean = line.strip()
             if not line_clean:
                 continue
 
-            # Check if this line is a Job Header:
-            # Starts with ###, or starts with **Cargo**, or has dates and separators without being a bullet
-            is_h3 = line_clean.startswith("### ")
             is_bullet = line_clean.startswith(("- ", "* ", "+ ", "• "))
-            has_dates = bool(re.search(date_pattern, line_clean, re.IGNORECASE))
-            has_sep = any(sep in line_clean for sep in [" | ", " - ", " – "])
+            plain = re.sub(r"^#{1,4}\s+", "", line_clean)
+            plain_no_bold = plain.replace("**", "").replace("__", "").strip()
 
-            if is_h3 or (not is_bullet and (has_dates or has_sep) and len(line_clean) < 130):
+            # Pattern A: Company in bold on its own line: **SICREDI PLANALTO...**
+            is_bold_standalone = (
+                line_clean.startswith("**") and line_clean.endswith("**")
+                and not is_bullet
+                and "|" not in plain_no_bold
+                and not is_date_string(plain_no_bold)
+            )
+
+            if is_bold_standalone and len(plain_no_bold) < 90:
+                pending_company = plain_no_bold
+                continue
+
+            has_pipe = " | " in plain_no_bold
+            has_dates = is_date_string(plain_no_bold)
+            is_h3 = line_clean.startswith("### ")
+
+            # Pattern B: Job header line (Cargo | Período or Cargo | Empresa | Período)
+            if not is_bullet and (is_h3 or has_dates or (has_pipe and len(plain_no_bold) < 130)):
                 if current_exp:
                     experiences.append(current_exp)
 
-                header = re.sub(r"^#{1,4}\s+", "", line_clean).strip()
-                header = header.replace("**", "").replace("__", "")
-
+                parts = [p.strip() for p in plain_no_bold.split("|") if p.strip()]
+                title = ""
+                company = pending_company
                 period = ""
-                paren_match = re.search(r"\(([^)]*(?:19\d{2}|20\d{2}|atual|presente)[^)]*)\)", header, re.IGNORECASE)
-                if paren_match:
-                    period = paren_match.group(1).strip()
-                    header = header[:paren_match.start()] + header[paren_match.end():]
+
+                if len(parts) >= 3:
+                    title = parts[0]
+                    company = parts[1]
+                    period = parts[2]
+                elif len(parts) == 2:
+                    p1 = parts[1]
+                    paren = re.search(r"\(([^)]+)\)", p1)
+                    if paren and is_date_string(paren.group(1)):
+                        title = parts[0]
+                        period = paren.group(1).strip()
+                        extracted_comp = (p1[:paren.start()] + p1[paren.end():]).strip()
+                        if extracted_comp:
+                            company = extracted_comp
+                    elif pending_company and is_date_string(p1):
+                        title = parts[0]
+                        period = p1
+                    elif is_date_string(p1) and not pending_company:
+                        title = parts[0]
+                        period = p1
+                    else:
+                        title = parts[0]
+                        company = p1
                 else:
-                    dm = re.search(r"((?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|\d{2})?[/.\s]?(?:19\d{2}|20\d{2})\s*(?:[-–a]\s*|\s*at[ée]\s*)(?:(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|\d{2})?[/.\s]?(?:19\d{2}|20\d{2})|presente|atual)?)", header, re.IGNORECASE)
-                    if dm:
-                        period = dm.group(1).strip()
-                        header = header[:dm.start()] + header[dm.end():]
+                    title = parts[0]
 
-                parts = [p.strip() for p in re.split(r"(?:\s+[-–—]\s+|\s*\|\s*)", header) if p.strip()]
-                title = parts[0] if len(parts) > 0 else header
-                company = parts[1] if len(parts) > 1 else ""
+                # Check if company or period were inside title like "Cargo - Empresa (Data)"
+                if "(" in title and ")" in title and not period:
+                    paren_match = re.search(r"\(([^)]+)\)", title)
+                    if paren_match and is_date_string(paren_match.group(1)):
+                        period = paren_match.group(1).strip()
+                        title = title[:paren_match.start()] + title[paren_match.end():]
+                        title = title.strip()
 
+                if " - " in title and not company:
+                    t_parts = title.split(" - ", 1)
+                    title = t_parts[0].strip()
+                    company = t_parts[1].strip()
+
+                pending_company = ""
                 current_exp = ResumeExperience(
                     title=title,
                     company=company,
@@ -214,7 +265,14 @@ class MarkdownResumeParser:
                 )
             else:
                 if not current_exp:
-                    current_exp = ResumeExperience(title="Experiência Profissional", company="", location="", period="", bullets=[])
+                    current_exp = ResumeExperience(
+                        title="Experiência Profissional",
+                        company=pending_company,
+                        location="",
+                        period="",
+                        bullets=[]
+                    )
+                    pending_company = ""
 
                 bullet_text = re.sub(r"^[\s•\-\*\+]+", "", line_clean).strip()
                 bullet_clean = cls._clean_markdown_inline(bullet_text)
@@ -229,58 +287,139 @@ class MarkdownResumeParser:
     @classmethod
     def _parse_education(cls, lines: List[str]) -> List[ResumeEducation]:
         education: List[ResumeEducation] = []
+        current_edu: Optional[ResumeEducation] = None
+        pending_inst = ""
+
         for line in lines:
             line_clean = line.strip()
             if not line_clean:
                 continue
 
-            clean = re.sub(r"^#{1,4}\s+", "", line_clean).strip()
-            clean = re.sub(r"^[\s•\-\*\+]+", "", clean).strip()
-            clean = clean.replace("**", "").replace("__", "")
+            is_bullet = line_clean.startswith(("- ", "* ", "+ ", "• "))
+            plain = re.sub(r"^#{1,4}\s+", "", line_clean)
+            plain_no_bold = plain.replace("**", "").replace("__", "").strip()
 
-            period = ""
-            paren_match = re.search(r"\(([^)]*(?:19\d{2}|20\d{2})[^)]*)\)", clean)
-            if paren_match:
-                period = paren_match.group(1).strip()
-                clean = clean[:paren_match.start()] + clean[paren_match.end():]
-            else:
-                ym = re.search(r"\b(19\d{2}|20\d{2})\b", clean)
-                if ym:
-                    period = ym.group(0)
+            is_bold_standalone = (
+                line_clean.startswith("**") and line_clean.endswith("**")
+                and not is_bullet
+                and "|" not in plain_no_bold
+                and not is_date_string(plain_no_bold)
+            )
 
-            parts = [p.strip() for p in re.split(r"(?:\s+[-–—]\s+|\s*\|\s*)", clean) if p.strip()]
-            degree = parts[0] if len(parts) > 0 else clean
-            inst = parts[1] if len(parts) > 1 else ""
+            is_tcc = "tcc" in plain_no_bold.lower() or "conclusão de curso" in plain_no_bold.lower()
 
-            education.append(ResumeEducation(
-                degree=degree,
-                institution=inst,
-                period=period,
-                details=""
-            ))
+            # If TCC or thesis mention, attach to current education entry
+            if is_tcc and current_edu:
+                current_edu.details = plain_no_bold
+                continue
+
+            if is_bold_standalone and len(plain_no_bold) < 120 and not is_tcc:
+                pending_inst = plain_no_bold
+                continue
+
+            has_pipe = " | " in plain_no_bold
+            has_dates = is_date_string(plain_no_bold)
+            is_h3 = line_clean.startswith("### ")
+
+            if not is_bullet and not is_tcc and (is_h3 or has_dates or (has_pipe and len(plain_no_bold) < 130)):
+                if current_edu:
+                    education.append(current_edu)
+
+                parts = [p.strip() for p in plain_no_bold.split("|") if p.strip()]
+                degree = ""
+                inst = pending_inst
+                period = ""
+
+                if len(parts) >= 3:
+                    degree = parts[0]
+                    inst = parts[1]
+                    period = parts[2]
+                elif len(parts) == 2:
+                    p1 = parts[1]
+                    paren = re.search(r"\(([^)]+)\)", p1)
+                    if paren and is_date_string(paren.group(1)):
+                        degree = parts[0]
+                        period = paren.group(1).strip()
+                        extracted_inst = (p1[:paren.start()] + p1[paren.end():]).strip()
+                        if extracted_inst:
+                            inst = extracted_inst
+                    elif pending_inst and is_date_string(p1):
+                        degree = parts[0]
+                        period = p1
+                    elif is_date_string(p1) and not pending_inst:
+                        degree = parts[0]
+                        period = p1
+                    else:
+                        degree = parts[0]
+                        inst = p1
+                else:
+                    degree = parts[0]
+
+                if not inst and " – " in degree:
+                    d_parts = degree.split(" – ", 1)
+                    degree = d_parts[0].strip()
+                    inst = d_parts[1].strip()
+                elif not inst and " - " in degree:
+                    d_parts = degree.split(" - ", 1)
+                    degree = d_parts[0].strip()
+                    inst = d_parts[1].strip()
+
+                pending_inst = ""
+                current_edu = ResumeEducation(
+                    degree=degree,
+                    institution=inst,
+                    period=period,
+                    details="",
+                    bullets=[]
+                )
+            elif current_edu:
+                clean_b = re.sub(r"^[\s•\-\*\+]+", "", line_clean).strip()
+                clean_b = cls._clean_markdown_inline(clean_b)
+                if is_bullet:
+                    current_edu.bullets.append(clean_b)
+                else:
+                    if current_edu.details:
+                        current_edu.details += " " + clean_b
+                    else:
+                        current_edu.details = clean_b
+
+        if current_edu:
+            education.append(current_edu)
+
         return education
 
     @classmethod
-    def _parse_skills(cls, lines: List[str]) -> List[str]:
-        skills = []
+    def _parse_skills(cls, lines: List[str]) -> Tuple[Dict[str, List[str]], List[str]]:
+        categories: Dict[str, List[str]] = {}
+        flat_skills: List[str] = []
+
         for line in lines:
             line_clean = line.strip()
             if not line_clean:
                 continue
+
             clean = re.sub(r"^[\s•\-\*\+]+", "", line_clean).strip()
-            # If line is categorized like "**Linguagens:** Python" or "**Linguagens**: Python"
-            clean = re.sub(r"^\*\*[^*]+?\*\*:\s*|^\*\*[^*]+?:\*\*\s*", "", clean).strip()
-            # Remove trailing dots
-            clean = clean.rstrip(".")
-            # Split items
-            items = [re.sub(r"[*_]", "", i).strip().rstrip(".") for i in re.split(r"[,;•|]", clean) if i.strip()]
-            for item in items:
-                # Strip any leftover category label if preceded by colon
-                if ":" in item:
-                    item = item.split(":", 1)[1].strip()
-                if item and len(item) < 45 and item not in skills:
-                    skills.append(item)
-        return skills
+            # Match categorized formats: **Linguagens:** ... or **Linguagens**: ...
+            cat_match = re.search(r"^\*\*(.*?)\*\*:\s*(.*)$", line_clean) or re.search(r"^\*\*(.*?):\*\*\s*(.*)$", line_clean)
+
+            if cat_match:
+                cat_name = cat_match.group(1).replace(":", "").strip()
+                rest = cat_match.group(2).strip().rstrip(".")
+                items = [re.sub(r"[*_]", "", i).strip().rstrip(".") for i in re.split(r"[,;•|]", rest) if i.strip()]
+                categories[cat_name] = items
+                for it in items:
+                    if it not in flat_skills:
+                        flat_skills.append(it)
+            else:
+                clean = clean.rstrip(".")
+                items = [re.sub(r"[*_]", "", i).strip().rstrip(".") for i in re.split(r"[,;•|]", clean) if i.strip()]
+                if items:
+                    categories.setdefault("Competências", []).extend(items)
+                    for it in items:
+                        if it not in flat_skills:
+                            flat_skills.append(it)
+
+        return categories, flat_skills
 
     @classmethod
     def _parse_simple_list(cls, lines: List[str]) -> List[str]:
@@ -304,7 +443,6 @@ class MarkdownResumeParser:
                 continue
             clean = re.sub(r"^[\s•\-\*\+]+", "", line_clean).strip()
             clean = cls._clean_markdown_inline(clean)
-            # Split if piped like "Inglês | Francês" or comma separated
             subitems = [i.strip() for i in re.split(r"[|•,;]", clean) if i.strip()]
             for s in subitems:
                 if s and s not in langs:

@@ -126,3 +126,123 @@ Inglês | Francês
     assert "cv-paper" in html
     assert "CARLOS EDUARDO" in html
     assert "Python" in html
+
+
+def test_milena_cv_parsing_and_export():
+    from app.exporter import DocumentExporter
+    from pypdf import PdfReader
+    from docx import Document
+    import io
+
+    milena_cv = """# MILENA HAMERSKI
+
+ hamerskimilena@gmail.com | (42) 98883-9268 | LinkedIn | GitHub
+
+## RESUMO PROFISSIONAL
+
+Desenvolvedora de Sistemas com experiência em desenvolvimento backend, integração de sistemas, construção de APIs RESTful e automação de processos. Atuação com Python, FastAPI, Node.js e bancos de dados SQL e NoSQL, com foco em arquitetura de software, otimização de fluxos operacionais, observabilidade e qualidade das entregas. Pós-graduanda em Ciência de Dados, com conhecimentos em análise de dados e aprendizado de máquina.
+
+## EXPERIÊNCIA PROFISSIONAL
+
+**SICREDI PLANALTO DAS ÁGUAS PR/SP**
+
+**Desenvolvedora de Sistemas | Janeiro/2025 – Atual**
+
+- Desenvolvimento de automação de notificações via WhatsApp, otimizando a comunicação com associados e reduzindo em aproximadamente 5 horas o esforço operacional anteriormente dedicado ao processo manual.
+- Integração de API de consulta veicular e reestruturação de fluxo de apoio à concessão de crédito, substituindo uma solução de terceiros e proporcionando uma redução de aproximadamente 3 vezes nos custos operacionais.
+- Reestruturação de API Gateway para integração com serviços externos, com componentização e padronização de logs estruturados para monitoramento via Grafana, facilitando a manutenção, aumentando a visibilidade operacional e agilizando a identificação e mitigação de falhas por meio da preservação dos códigos de resposta originais das APIs integradas.
+
+**FIQON**
+
+**Desenvolvedora Full Stack | Julho/2023 – Julho/2024**
+
+- Integração entre API de e-commerce e plataforma de comunicação via WhatsApp, utilizando webhooks para automatizar notificações e permitir o acompanhamento das etapas do pós-venda até a entrega, reduzindo atividades manuais e agilizando a comunicação com clientes.
+- Desenvolvimento de aplicação web com painel administrativo para gerenciamento e monitoramento de produtos, incluindo preços, estoque e descrições, com sincronização das informações com a plataforma de e-commerce do cliente.
+
+## FORMAÇÃO ACADÊMICA
+
+**UNIVERSIDADE FEDERAL DE OURO PRETO (UFOP)**
+
+Pós-graduação em Ciência de Dados | Agosto 2026 – Em andamento
+
+**UNIVERSIDADE TECNOLÓGICA FEDERAL DO PARANÁ (UTFPR) – GUARAPUAVA/PR**
+
+Tecnologia em Sistemas para Internet | Setembro/2023 – Julho/2026
+
+**Trabalho de Conclusão de Curso (TCC):**
+
+"Predição de Inadimplência no Pós-Concessão de Crédito: Aprendizado de Máquina com Dados do Sistema de Informações de Crédito (SCR)"
+
+- Desenvolvimento e avaliação de modelos de aprendizado de máquina para predição de inadimplência em operações de crédito.
+- Preparação, tratamento e engenharia de atributos utilizando dados públicos do Sistema de Informações de Crédito (SCR).
+- Aplicação e otimização de algoritmos de classificação, com comparação de desempenho por métricas como Accuracy, Precision, Recall, F1-Score e ROC-AUC.
+- Utilização de Python, Pandas, Polars, Scikit-learn, XGBoost e Imbalanced-learn no processo de análise, treinamento e avaliação dos modelos.
+
+## HABILIDADES E TECNOLOGIAS
+
+**Linguagens:** Python, JavaScript, TypeScript, SQL.
+
+**Backend e APIs:** FastAPI, Node.js, Express.js, APIs RESTful, Webhooks, Microsserviços.
+
+**Dados e Machine Learning:** Pandas, Polars, Scikit-learn, XGBoost, Imbalanced-learn, Análise de Dados.
+
+**Bancos de Dados:** MongoDB, SQL.
+
+**DevOps e Ferramentas:** Docker, Git, GitLab, GitHub, Grafana, Prometheus.
+
+**Automação e Testes:** Playwright, PyAutoGUI, Pytest, Testes Automatizados.
+
+## IDIOMAS
+
+Inglês | Francês
+"""
+
+    struct = MarkdownResumeParser.parse(milena_cv)
+
+    # 1. Verification of structural integrity
+    assert struct.contact.name == "MILENA HAMERSKI"
+    assert struct.contact.email == "hamerskimilena@gmail.com"
+    assert struct.contact.phone == "(42) 98883-9268"
+
+    assert len(struct.experiences) == 2
+    assert struct.experiences[0].title == "Desenvolvedora de Sistemas"
+    assert "SICREDI" in struct.experiences[0].company
+    assert "Janeiro/2025" in struct.experiences[0].period
+    assert len(struct.experiences[0].bullets) == 3
+
+    assert struct.experiences[1].title == "Desenvolvedora Full Stack"
+    assert struct.experiences[1].company == "FIQON"
+    assert "Julho/2023" in struct.experiences[1].period
+    assert len(struct.experiences[1].bullets) == 2
+
+    assert len(struct.education) == 2
+    assert "UFOP" in struct.education[0].institution or "OURO PRETO" in struct.education[0].institution
+    assert "UTFPR" in struct.education[1].institution
+    assert len(struct.education[1].bullets) == 4
+
+    assert len(struct.skill_categories) == 6
+    assert "Python" in struct.skill_categories["Linguagens"]
+    assert "FastAPI" in struct.skill_categories["Backend e APIs"]
+
+    # 2. PDF Generation
+    pdf_bytes = DocumentExporter.generate_resume_pdf(struct)
+    assert len(pdf_bytes) > 2000
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    pdf_full = "".join(p.extract_text() or "" for p in reader.pages)
+    assert "MILENA HAMERSKI" in pdf_full
+    assert "SICREDI" in pdf_full
+    assert "FIQON" in pdf_full
+    assert "Janeiro/2025" in pdf_full
+    assert "Julho/2023" in pdf_full
+    assert "Linguagens" in pdf_full
+    assert "Inglês" in pdf_full
+
+    # 3. DOCX Generation
+    docx_bytes = DocumentExporter.generate_resume_docx(struct)
+    assert len(docx_bytes) > 2000
+    doc = Document(io.BytesIO(docx_bytes))
+    docx_full = "\n".join(p.text for p in doc.paragraphs)
+    assert "MILENA HAMERSKI" in docx_full
+    assert "SICREDI" in docx_full
+    assert "FIQON" in docx_full
+    assert "Linguagens:" in docx_full

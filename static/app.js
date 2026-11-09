@@ -520,6 +520,7 @@ function renderMarkdownPreviewLocally(mdText) {
   let sections = [];
   let currentSec = null;
   let currentJob = null;
+  let pendingCompany = "";
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i].trim();
@@ -535,7 +536,7 @@ function renderMarkdownPreviewLocally(mdText) {
     if (sections.length === 0 && !currentSec && (raw.includes("@") || raw.includes("|") || raw.includes("http") || raw.includes("("))) {
       const parts = raw.split("|").map(p => p.trim()).filter(Boolean);
       parts.forEach(p => {
-        let clean = p.replace(/\[(.*?)\]\((.*?)\)/g, "$1").replace(/\*\*/g, "");
+        let clean = p.replace(/\[(.*?)\]\((.*?)\)/g, "$1").replace(/\*\*/g, "").trim();
         if (clean.includes("@")) contacts.push(`<span>✉️ ${clean}</span>`);
         else if (/\d{4,5}[-\s]?\d{4}/.test(clean)) contacts.push(`<span>📞 ${clean}</span>`);
         else if (/linkedin/i.test(clean)) contacts.push(`<span>🔗 ${clean}</span>`);
@@ -546,7 +547,7 @@ function renderMarkdownPreviewLocally(mdText) {
     }
 
     // H2: Section heading
-    if (raw.startsWith("## ") || (!raw.startsWith("-") && !raw.startsWith("*") && !raw.startsWith("###") && raw === raw.toUpperCase() && raw.length < 35 && (raw.includes("EXPERI") || raw.includes("RESUMO") || raw.includes("FORMA") || raw.includes("HABIL") || raw.includes("IDIOM")))) {
+    if (raw.startsWith("## ") || (!raw.startsWith("-") && !raw.startsWith("*") && !raw.startsWith("###") && raw === raw.toUpperCase() && raw.length < 40 && (raw.includes("EXPERI") || raw.includes("RESUMO") || raw.includes("FORMA") || raw.includes("HABIL") || raw.includes("IDIOM")))) {
       if (currentJob && currentSec) {
         currentSec.jobs.push(currentJob);
         currentJob = null;
@@ -554,21 +555,82 @@ function renderMarkdownPreviewLocally(mdText) {
       if (currentSec) sections.push(currentSec);
 
       const secTitle = raw.replace(/^##\s+/, "").replace(/\*\*/g, "").trim().toUpperCase();
-      currentSec = { title: secTitle, text: [], jobs: [], bullets: [], isSkills: secTitle.includes("HABIL") || secTitle.includes("SKILL") || secTitle.includes("TECNOLOG") };
+      currentSec = {
+        title: secTitle,
+        text: [],
+        jobs: [],
+        bullets: [],
+        skillCategories: {},
+        isSkills: secTitle.includes("HABIL") || secTitle.includes("SKILL") || secTitle.includes("TECNOLOG"),
+        isLanguages: secTitle.includes("IDIOM") || secTitle.includes("LANGUAG")
+      };
+      pendingCompany = "";
       continue;
     }
 
     if (!currentSec) {
-      currentSec = { title: "RESUMO PROFISSIONAL", text: [], jobs: [], bullets: [], isSkills: false };
+      currentSec = { title: "RESUMO PROFISSIONAL", text: [], jobs: [], bullets: [], skillCategories: {}, isSkills: false, isLanguages: false };
     }
 
-    // H3: Job or Education item
-    if (raw.startsWith("### ") || (!raw.startsWith("-") && !raw.startsWith("*") && (raw.includes(" | ") || raw.includes(" - ")) && /\d{4}/.test(raw))) {
+    // Special: Categorized skills line (e.g. **Linguagens:** Python, SQL)
+    if (currentSec.isSkills) {
+      const catMatch = raw.match(/^\*\*(.*?)\*\*:\s*(.*)$/) || raw.match(/^\*\*(.*?):\*\*\s*(.*)$/);
+      if (catMatch) {
+        const catName = catMatch[1].replace(":", "").trim();
+        const items = catMatch[2].replace(/\.$/, "").split(/[,;•|]/).map(s => s.trim().replace(/\.$/, "")).filter(Boolean);
+        currentSec.skillCategories[catName] = items;
+        continue;
+      }
+    }
+
+    // Special: Standalone bold line in Experience/Education (e.g. **SICREDI PLANALTO...**)
+    const plainRaw = raw.replace(/^#{1,4}\s+/, "").replace(/\*\*/g, "").trim();
+    const isBoldStandalone = (raw.startsWith("**") && raw.endsWith("**") && !raw.startsWith("-") && !raw.includes("|") && !/\b(20\d{2}|19\d{2})\b/.test(raw) && !raw.toLowerCase().includes("tcc"));
+    if (isBoldStandalone && (currentSec.title.includes("EXPERI") || currentSec.title.includes("FORMA"))) {
+      pendingCompany = plainRaw;
+      continue;
+    }
+
+    // H3 / Job / Degree Header
+    const isH3 = raw.startsWith("### ");
+    const hasPipe = raw.includes(" | ");
+    const hasDate = /\b(20\d{2}|19\d{2}|atual|presente|andamento)\b/i.test(raw);
+
+    if (isH3 || (!raw.startsWith("-") && !raw.startsWith("*") && (hasPipe || hasDate) && raw.length < 130 && !raw.toLowerCase().includes("tcc"))) {
       if (currentJob) {
         currentSec.jobs.push(currentJob);
       }
-      const jobLine = raw.replace(/^###\s+/, "").replace(/\*\*/g, "").trim();
-      currentJob = { header: jobLine, bullets: [] };
+      const parts = plainRaw.split("|").map(p => p.trim());
+      let title = parts[0] || plainRaw;
+      let comp = pendingCompany;
+      let period = "";
+      pendingCompany = "";
+
+      if (parts.length >= 3) {
+        title = parts[0];
+        comp = parts[1];
+        period = parts[2];
+      } else if (parts.length === 2) {
+        if (/\b(20\d{2}|19\d{2}|atual|presente|andamento)\b/i.test(parts[1])) {
+          title = parts[0];
+          period = parts[1];
+        } else {
+          title = parts[0];
+          comp = parts[1];
+        }
+      }
+
+      currentJob = { title, comp, period, bullets: [], details: "" };
+      continue;
+    }
+
+    // TCC mention in education
+    if (raw.toLowerCase().includes("tcc") || raw.toLowerCase().includes("conclusão de curso")) {
+      if (currentJob) {
+        currentJob.details = plainRaw;
+      } else if (currentSec.jobs.length > 0) {
+        currentSec.jobs[currentSec.jobs.length - 1].details = plainRaw;
+      }
       continue;
     }
 
@@ -582,9 +644,13 @@ function renderMarkdownPreviewLocally(mdText) {
       }
     } else {
       if (currentJob) {
-        currentJob.bullets.push(raw.replace(/\*\*(.*?)\*\*/g, "$1"));
+        if (currentJob.details) {
+          currentJob.details += " " + plainRaw;
+        } else {
+          currentJob.details = plainRaw;
+        }
       } else {
-        currentSec.text.push(raw);
+        currentSec.text.push(plainRaw);
       }
     }
   }
@@ -606,11 +672,28 @@ function renderMarkdownPreviewLocally(mdText) {
     html += `<h3 class="cv-preview-heading">${sec.title}</h3>`;
 
     if (sec.isSkills) {
+      if (Object.keys(sec.skillCategories).length > 0) {
+        for (const [cat, items] of Object.entries(sec.skillCategories)) {
+          html += `<div class="cv-skill-category-row">`;
+          html += `<span class="cv-skill-cat-title">${cat}:</span>`;
+          html += `<div class="cv-skills-pills">`;
+          items.forEach(s => { html += `<span class="cv-skill-pill">${s}</span>`; });
+          html += `</div></div>`;
+        }
+      } else {
+        html += `<div class="cv-skills-pills">`;
+        const allText = sec.text.concat(sec.bullets).join(", ");
+        const rawSkills = allText.split(/[,;•|]/);
+        rawSkills.map(s => s.trim().replace(/\.$/, "")).filter(s => s && s.length < 35).forEach(s => {
+          html += `<span class="cv-skill-pill">${s}</span>`;
+        });
+        html += `</div>`;
+      }
+    } else if (sec.isLanguages) {
       html += `<div class="cv-skills-pills">`;
-      const allText = sec.text.concat(sec.bullets).join(", ");
-      const rawSkills = allText.replace(/\*\*[^*]+\*\*:\s*/g, "").split(/[,;•|]/);
-      rawSkills.map(s => s.trim().replace(/\.$/, "")).filter(s => s && s.length < 35).forEach(s => {
-        html += `<span class="cv-skill-pill">${s}</span>`;
+      const allLangText = sec.text.concat(sec.bullets).join(" | ");
+      allLangText.split(/[|•,]/).map(l => l.trim()).filter(Boolean).forEach(l => {
+        html += `<span class="cv-skill-pill" style="background:#f0fdf4; border-color:#bbf7d0;">${l}</span>`;
       });
       html += `</div>`;
     } else {
@@ -620,13 +703,13 @@ function renderMarkdownPreviewLocally(mdText) {
       if (sec.jobs.length > 0) {
         sec.jobs.forEach(j => {
           html += `<div class="cv-job-block">`;
-          const parts = j.header.split("|").map(p => p.trim());
-          const title = parts[0] || j.header;
-          const comp = parts[1] ? ` | ${parts[1]}` : "";
-          const periodMatch = j.header.match(/\((.*?)\)/);
-          const period = periodMatch ? ` <span class="cv-job-period">(${periodMatch[1]})</span>` : "";
+          const compStr = j.comp ? ` <span class="cv-job-company">| ${j.comp}</span>` : "";
+          const periodStr = j.period ? ` <span class="cv-job-period">(${j.period})</span>` : "";
 
-          html += `<div class="cv-job-header"><span class="cv-job-title">${title}</span><span class="cv-job-company">${comp.replace(/\(.*?\)/, "")}</span>${period}</div>`;
+          html += `<div class="cv-job-header"><span class="cv-job-title">${j.title}</span>${compStr}${periodStr}</div>`;
+          if (j.details) {
+            html += `<div style="font-size: 0.85rem; font-style: italic; color: #4b5563; margin: 2px 0 4px;">${j.details}</div>`;
+          }
           if (j.bullets.length > 0) {
             html += `<ul class="cv-job-bullets">`;
             j.bullets.forEach(b => { html += `<li>${b}</li>`; });
@@ -653,6 +736,60 @@ function initManualReview() {
   const editor = document.getElementById("cv-editor");
   const mdFileInput = document.getElementById("md-file-input");
   const btnLoadTemplate = document.getElementById("btn-load-md-template");
+  const btnToggleGuide = document.getElementById("btn-toggle-guide");
+  const btnAutoFormat = document.getElementById("btn-auto-format-md");
+  const mdGuidePanel = document.getElementById("md-guide-panel");
+
+  // Toggle Markdown Guide Panel
+  if (btnToggleGuide && mdGuidePanel) {
+    btnToggleGuide.addEventListener("click", () => {
+      mdGuidePanel.classList.toggle("hidden");
+      btnToggleGuide.textContent = mdGuidePanel.classList.contains("hidden")
+        ? "📖 Guia de Padrão Markdown"
+        : "✖ Fechar Guia";
+    });
+  }
+
+  // Auto-format markdown button
+  if (btnAutoFormat) {
+    btnAutoFormat.addEventListener("click", async () => {
+      const rawText = editor.value.trim();
+      if (!rawText) {
+        alert("Cole ou digite algum texto no editor para auto-formatar.");
+        return;
+      }
+
+      btnAutoFormat.disabled = true;
+      btnAutoFormat.innerHTML = `<span class="step-spinner" style="width: 12px; height: 12px;"></span> Formatando...`;
+
+      try {
+        const res = await fetch("/api/format-markdown", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markdown_text: rawText })
+        });
+
+        if (!res.ok) throw new Error("Erro na formatação.");
+        const data = await res.json();
+
+        // Update editor with clean canonical standard
+        editor.value = data.formatted_markdown;
+        if (data.preview_html) {
+          document.getElementById("cv-paper-container").innerHTML = data.preview_html;
+        }
+
+        const statusEl = document.getElementById("editor-status");
+        statusEl.textContent = "✔ Markdown padronizado e organizado com sucesso!";
+        setTimeout(() => { statusEl.textContent = ""; }, 4000);
+
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btnAutoFormat.disabled = false;
+        btnAutoFormat.innerHTML = "✨ Auto-Formatar no Padrão";
+      }
+    });
+  }
 
   // Tabs
   const tabSplit = document.getElementById("tab-split");

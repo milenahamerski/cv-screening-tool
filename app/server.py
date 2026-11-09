@@ -142,6 +142,24 @@ async def optimize_resume(payload: Dict[str, str]):
     }
 
 
+@app.post("/api/format-markdown")
+async def format_markdown(payload: Dict[str, str]):
+    """Auto-formats messy or non-standard markdown into the canonical ATS standard."""
+    raw_md = payload.get("markdown_text", "").strip()
+    if not raw_md:
+        raise HTTPException(status_code=400, detail="Texto vazio.")
+
+    structured = MarkdownResumeParser.parse(raw_md)
+    canonical_md = ResumeOptimizer.render_to_markdown(structured)
+    preview_html = DocumentExporter.generate_preview_html(structured)
+
+    return {
+        "formatted_markdown": canonical_md,
+        "preview_html": preview_html,
+        "structured": structured.model_dump()
+    }
+
+
 @app.post("/api/from-markdown")
 async def from_markdown(payload: Dict[str, str]):
     """Creates or updates a session directly from pasted Markdown and generates the beautiful CV."""

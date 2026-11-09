@@ -452,10 +452,20 @@ class ResumeOptimizer:
                 if edu.period:
                     edu_parts.append(f"({edu.period})")
                 lines.append(f"### {' | '.join(edu_parts)}")
+                if edu.details:
+                    lines.append(f"**{edu.details}**")
+                for b in edu.bullets:
+                    lines.append(f"- {b}")
+                lines.append("")
             lines.append("")
 
         # Skills
-        if struct.skills:
+        if struct.skill_categories:
+            lines.append("## Habilidades e Tecnologias")
+            for cat, items in struct.skill_categories.items():
+                lines.append(f"**{cat}:** " + ", ".join(items))
+            lines.append("")
+        elif struct.skills:
             lines.append("## Habilidades e Tecnologias")
             lines.append("- " + ", ".join(struct.skills))
             lines.append("")
@@ -535,10 +545,19 @@ class ResumeOptimizer:
                 if edu.period:
                     edu_parts.append(f"({edu.period})")
                 lines.append(" - ".join(edu_parts))
+                if edu.details:
+                    lines.append(edu.details)
+                for b in edu.bullets:
+                    lines.append(f"• {b}")
             lines.append("")
 
         # Skills
-        if struct.skills:
+        if struct.skill_categories:
+            lines.append("HABILIDADES E TECNOLOGIAS")
+            for cat, items in struct.skill_categories.items():
+                lines.append(f"{cat}: " + ", ".join(items))
+            lines.append("")
+        elif struct.skills:
             lines.append("HABILIDADES E TECNOLOGIAS")
             lines.append(", ".join(struct.skills))
             lines.append("")

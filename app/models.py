@@ -50,6 +50,7 @@ class ResumeEducation(BaseModel):
     institution: str = ""
     period: str = ""
     details: str = ""
+    bullets: List[str] = Field(default_factory=list)
 
 
 class ResumeStructured(BaseModel):
@@ -58,6 +59,7 @@ class ResumeStructured(BaseModel):
     experiences: List[ResumeExperience] = Field(default_factory=list)
     education: List[ResumeEducation] = Field(default_factory=list)
     skills: List[str] = Field(default_factory=list)
+    skill_categories: Dict[str, List[str]] = Field(default_factory=dict)
     certifications: List[str] = Field(default_factory=list)
     languages: List[str] = Field(default_factory=list)
     additional: List[str] = Field(default_factory=list)

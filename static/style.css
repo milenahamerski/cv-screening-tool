@@ -837,6 +837,18 @@ body {
   margin-top: 4px;
 }
 
+.cv-skill-category-row {
+  margin-bottom: 8px;
+}
+
+.cv-skill-cat-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #0f2c59;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
 .cv-skill-pill {
   background: #f1f5f9;
   color: #0f2c59;
@@ -845,6 +857,57 @@ body {
   font-weight: 600;
   padding: 3px 10px;
   border-radius: 9999px;
+}
+
+/* Markdown Guide Panel */
+.md-guide-panel {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+}
+
+.md-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.md-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.md-guide-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.md-guide-card h5 {
+  font-size: 0.85rem;
+  color: var(--primary);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.md-code-snippet {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 .btn-reanalyze {

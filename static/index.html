@@ -274,12 +274,80 @@
           <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="document.getElementById('md-file-input').click()">
             📂 Carregar .MD
           </button>
-          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-load-md-template">
-            📋 Exemplo MD
+          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-auto-format-md" title="Reorganiza e padroniza seu Markdown automaticamente">
+            ✨ Auto-Formatar no Padrão
+          </button>
+          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" id="btn-toggle-guide">
+            📖 Guia de Padrão Markdown
           </button>
           <button class="btn-reanalyze" id="btn-reanalyze">
-            ✨ Gerar CV Bonitinho & Reavaliar
+            🚀 Gerar CV Bonitinho & Reavaliar
           </button>
+        </div>
+      </div>
+
+      <!-- Guia de Padrão Markdown (Exemplos claros para dar certo) -->
+      <div class="md-guide-panel hidden" id="md-guide-panel">
+        <div class="md-guide-header" id="md-guide-toggle-header">
+          <div>
+            <strong>📋 Padrão Recomendado de Markdown para o CV Optimizer</strong>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+              Você pode escrever de forma flexível ou usar a estrutura recomendada abaixo (clique em "Auto-Formatar no Padrão" para organizar seu texto automaticamente).
+            </p>
+          </div>
+          <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 4px 10px;" id="btn-load-md-template">
+            Inserir Modelo Completo
+          </button>
+        </div>
+
+        <div class="md-guide-grid">
+          <div class="md-guide-card">
+            <h5>1. Cabeçalho & Contato</h5>
+            <div class="md-code-snippet"># SEU NOME COMPLETO
+email@email.com | (11) 98765-4321 | LinkedIn | GitHub</div>
+          </div>
+
+          <div class="md-guide-card">
+            <h5>2. Resumo Profissional</h5>
+            <div class="md-code-snippet">## RESUMO PROFISSIONAL
+Desenvolvedor de Sistemas com 4 anos de experiência em Python, FastAPI e bancos de dados...</div>
+          </div>
+
+          <div class="md-guide-card">
+            <h5>3. Experiência Profissional</h5>
+            <div class="md-code-snippet">## EXPERIÊNCIA PROFISSIONAL
+
+**EMPRESA OU INSTITUIÇÃO**
+**Cargo | Janeiro/2023 – Atual**
+- Desenvolveu automação reduzindo em 5h o tempo...
+- Integrou APIs RESTful com Grafana...</div>
+          </div>
+
+          <div class="md-guide-card">
+            <h5>4. Formação & TCC</h5>
+            <div class="md-code-snippet">## FORMAÇÃO ACADÊMICA
+
+**NOME DA UNIVERSIDADE**
+Bacharelado em Engenharia | 2020 – 2024
+**Trabalho de Conclusão de Curso (TCC):** "Tema..."
+- Detalhes do projeto ou publicação...</div>
+          </div>
+
+          <div class="md-guide-card">
+            <h5>5. Habilidades por Categoria</h5>
+            <div class="md-code-snippet">## HABILIDADES E TECNOLOGIAS
+
+**Linguagens:** Python, TypeScript, SQL.
+**Backend e APIs:** FastAPI, Node.js, RESTful.
+**Dados e ML:** Pandas, Scikit-learn, XGBoost.
+**DevOps:** Docker, Git, CI/CD, Grafana.</div>
+          </div>
+
+          <div class="md-guide-card">
+            <h5>6. Idiomas</h5>
+            <div class="md-code-snippet">## IDIOMAS
+Inglês (Avançado) | Francês (Intermediário)</div>
+          </div>
         </div>
       </div>
 

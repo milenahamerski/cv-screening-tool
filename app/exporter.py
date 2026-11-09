@@ -1,4 +1,4 @@
-"""Document Exporter for DOCX, PDF, and Comparison Reports with refined styling."""
+"""Document Exporter for DOCX, PDF, and Comparison Reports with refined executive styling."""
 
 import io
 from typing import Dict, Any, List
@@ -10,7 +10,7 @@ from docx.oxml.ns import nsdecls
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from app.models import ResumeStructured, ComparisonResult, DiagnosisResult
@@ -26,12 +26,12 @@ class DocumentExporter:
     def generate_resume_docx(cls, resume: ResumeStructured) -> bytes:
         doc = Document()
 
-        # Set single-column standard 0.8 inch margins
+        # Set single-column standard margins
         for section in doc.sections:
-            section.top_margin = Inches(0.75)
-            section.bottom_margin = Inches(0.75)
-            section.left_margin = Inches(0.8)
-            section.right_margin = Inches(0.8)
+            section.top_margin = Inches(0.7)
+            section.bottom_margin = Inches(0.7)
+            section.left_margin = Inches(0.75)
+            section.right_margin = Inches(0.75)
             section.page_width = Inches(8.5)
             section.page_height = Inches(11.0)
 
@@ -68,7 +68,7 @@ class DocumentExporter:
         if contact_items:
             cont_p = doc.add_paragraph()
             cont_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            cont_p.paragraph_format.space_after = Pt(12)
+            cont_p.paragraph_format.space_after = Pt(10)
             run_cont = cont_p.add_run("  •  ".join(contact_items))
             run_cont.font.size = Pt(9)
             run_cont.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
@@ -84,7 +84,7 @@ class DocumentExporter:
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x0F, 0x2C, 0x59)
 
-            # Add clean horizontal divider under heading
+            # Clean horizontal divider line
             pPr = p._element.get_or_add_pPr()
             pBdr = parse_xml(f'<w:pBdr {nsdecls("w")}><w:bottom w:val="single" w:sz="6" w:space="2" w:color="0F2C59"/></w:pBdr>')
             pPr.append(pBdr)
@@ -103,7 +103,7 @@ class DocumentExporter:
             add_heading("Experiência Profissional")
             for exp in resume.experiences:
                 job_p = doc.add_paragraph()
-                job_p.paragraph_format.space_before = Pt(5)
+                job_p.paragraph_format.space_before = Pt(6)
                 job_p.paragraph_format.space_after = Pt(1)
                 job_p.paragraph_format.keep_with_next = True
 
@@ -126,7 +126,7 @@ class DocumentExporter:
                     bp = doc.add_paragraph(style="List Bullet")
                     bp.paragraph_format.space_before = Pt(1)
                     bp.paragraph_format.space_after = Pt(2)
-                    bp.paragraph_format.line_spacing = 1.1
+                    bp.paragraph_format.line_spacing = 1.12
                     brun = bp.add_run(b)
                     brun.font.size = Pt(9.5)
 
@@ -135,8 +135,9 @@ class DocumentExporter:
             add_heading("Formação Acadêmica")
             for edu in resume.education:
                 edu_p = doc.add_paragraph()
-                edu_p.paragraph_format.space_before = Pt(4)
-                edu_p.paragraph_format.space_after = Pt(2)
+                edu_p.paragraph_format.space_before = Pt(5)
+                edu_p.paragraph_format.space_after = Pt(1)
+                edu_p.paragraph_format.keep_with_next = True
 
                 d_run = edu_p.add_run(edu.degree or "Curso")
                 d_run.bold = True
@@ -151,8 +152,36 @@ class DocumentExporter:
                     p_run.italic = True
                     p_run.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
 
-        # Habilidades e Tecnologias
-        if resume.skills:
+                if edu.details:
+                    det_p = doc.add_paragraph()
+                    det_p.paragraph_format.space_before = Pt(2)
+                    det_p.paragraph_format.space_after = Pt(2)
+                    det_run = det_p.add_run(edu.details)
+                    det_run.font.size = Pt(9)
+                    det_run.italic = True
+                    det_run.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
+
+                for b in edu.bullets:
+                    bp = doc.add_paragraph(style="List Bullet")
+                    bp.paragraph_format.space_before = Pt(1)
+                    bp.paragraph_format.space_after = Pt(1)
+                    brun = bp.add_run(b)
+                    brun.font.size = Pt(9)
+
+        # Habilidades e Tecnologias (Categorizadas ou Lista Simples)
+        if resume.skill_categories:
+            add_heading("Habilidades e Tecnologias")
+            for cat, items in resume.skill_categories.items():
+                sk_p = doc.add_paragraph()
+                sk_p.paragraph_format.space_before = Pt(2)
+                sk_p.paragraph_format.space_after = Pt(2)
+                run_cat = sk_p.add_run(f"{cat}: ")
+                run_cat.bold = True
+                run_cat.font.size = Pt(9.5)
+                run_cat.font.color.rgb = RGBColor(0x11, 0x18, 0x27)
+                run_items = sk_p.add_run(" • ".join(items))
+                run_items.font.size = Pt(9.5)
+        elif resume.skills:
             add_heading("Habilidades e Tecnologias")
             sk_p = doc.add_paragraph()
             sk_p.paragraph_format.space_after = Pt(6)
@@ -190,10 +219,10 @@ class DocumentExporter:
         doc = SimpleDocTemplate(
             buf,
             pagesize=letter,
-            leftMargin=38,
-            rightMargin=38,
-            topMargin=36,
-            bottomMargin=36
+            leftMargin=32,
+            rightMargin=32,
+            topMargin=28,
+            bottomMargin=28
         )
 
         styles = getSampleStyleSheet()
@@ -202,8 +231,8 @@ class DocumentExporter:
             "NameStyle",
             parent=styles["Normal"],
             fontName="Helvetica-Bold",
-            fontSize=17,
-            leading=21,
+            fontSize=16,
+            leading=20,
             alignment=1,  # Center
             textColor=colors.HexColor("#0f2c59")
         )
@@ -222,19 +251,20 @@ class DocumentExporter:
             "SectionHeading",
             parent=styles["Heading2"],
             fontName="Helvetica-Bold",
-            fontSize=10.5,
-            leading=13,
+            fontSize=10,
+            leading=12,
             textColor=colors.HexColor("#0f2c59"),
-            spaceBefore=8,
-            spaceAfter=2
+            spaceBefore=7,
+            spaceAfter=2,
+            keepWithNext=True
         )
 
         body_style = ParagraphStyle(
             "Body",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=9,
-            leading=12.5,
+            fontSize=8.5,
+            leading=11.5,
             textColor=colors.HexColor("#1f2937")
         )
 
@@ -243,10 +273,11 @@ class DocumentExporter:
             parent=styles["Normal"],
             fontName="Helvetica",
             fontSize=8.5,
-            leading=12,
+            leading=11.5,
             leftIndent=12,
             firstLineIndent=-8,
-            textColor=colors.HexColor("#1f2937")
+            textColor=colors.HexColor("#1f2937"),
+            spaceAfter=1.5
         )
 
         story = []
@@ -254,7 +285,7 @@ class DocumentExporter:
         # Header: Name
         name_text = (resume.contact.name or "CURRÍCULO PROFISSIONAL").upper()
         story.append(Paragraph(name_text, name_style))
-        story.append(Spacer(1, 3))
+        story.append(Spacer(1, 2))
 
         # Contact Info
         contact_items = []
@@ -271,67 +302,89 @@ class DocumentExporter:
 
         if contact_items:
             story.append(Paragraph(" &nbsp;•&nbsp; ".join(contact_items), contact_style))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
 
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cbd5e1"), spaceAfter=6))
+        story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0f2c59"), spaceAfter=5))
 
         def add_pdf_heading(title: str):
             story.append(Paragraph(title.upper(), heading_style))
-            story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0f2c59"), spaceAfter=5))
+            story.append(HRFlowable(width="100%", thickness=0.6, color=colors.HexColor("#0f2c59"), spaceAfter=4))
 
         # Summary
         if resume.summary:
             add_pdf_heading("Resumo Profissional")
             story.append(Paragraph(resume.summary, body_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
 
         # Experience
         if resume.experiences:
             add_pdf_heading("Experiência Profissional")
             for exp in resume.experiences:
+                exp_flowables = []
                 exp_header = f"<b>{exp.title or 'Cargo'}</b>"
                 if exp.company:
                     exp_header += f" &nbsp;|&nbsp; <font color='#1e40af'><b>{exp.company}</b></font>"
                 if exp.period:
                     exp_header += f" &nbsp;<i><font color='#64748b'>({exp.period})</font></i>"
-                story.append(Paragraph(exp_header, body_style))
-                story.append(Spacer(1, 2))
+                exp_flowables.append(Paragraph(exp_header, body_style))
+                exp_flowables.append(Spacer(1, 2))
 
                 for b in exp.bullets:
-                    story.append(Paragraph(f"• {b}", bullet_style))
-                    story.append(Spacer(1, 1))
-                story.append(Spacer(1, 3))
+                    exp_flowables.append(Paragraph(f"• {b}", bullet_style))
+                exp_flowables.append(Spacer(1, 3))
+                story.append(KeepTogether(exp_flowables))
 
         # Education
         if resume.education:
             add_pdf_heading("Formação Acadêmica")
             for edu in resume.education:
+                edu_flowables = []
                 edu_line = f"<b>{edu.degree}</b>"
                 if edu.institution:
                     edu_line += f" &nbsp;|&nbsp; {edu.institution}"
                 if edu.period:
                     edu_line += f" &nbsp;<i><font color='#64748b'>({edu.period})</font></i>"
-                story.append(Paragraph(edu_line, body_style))
-                story.append(Spacer(1, 2))
+                edu_flowables.append(Paragraph(edu_line, body_style))
 
-        # Skills
-        if resume.skills:
+                if edu.details:
+                    edu_flowables.append(Paragraph(f"<i><font color='#4b5563'>{edu.details}</font></i>", body_style))
+
+                for b in edu.bullets:
+                    edu_flowables.append(Paragraph(f"• {b}", bullet_style))
+
+                edu_flowables.append(Spacer(1, 3))
+                story.append(KeepTogether(edu_flowables))
+
+        # Skills & Categories
+        if resume.skill_categories:
+            add_pdf_heading("Habilidades e Tecnologias")
+            skills_flowables = []
+            for cat, items in resume.skill_categories.items():
+                cat_line = f"<b>{cat}:</b> &nbsp;" + " &nbsp;•&nbsp; ".join(items)
+                skills_flowables.append(Paragraph(cat_line, body_style))
+                skills_flowables.append(Spacer(1, 1.5))
+            story.append(KeepTogether(skills_flowables))
+            story.append(Spacer(1, 2))
+        elif resume.skills:
             add_pdf_heading("Habilidades e Tecnologias")
             skills_line = " &nbsp;•&nbsp; ".join(resume.skills)
             story.append(Paragraph(skills_line, body_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
 
         # Certifications
         if resume.certifications:
             add_pdf_heading("Certificações e Cursos")
             for cert in resume.certifications:
                 story.append(Paragraph(f"• {cert}", bullet_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
 
         # Languages
         if resume.languages:
-            add_pdf_heading("Idiomas")
-            story.append(Paragraph(" &nbsp;•&nbsp; ".join(resume.languages), body_style))
+            lang_flowables = []
+            lang_flowables.append(Paragraph("IDIOMAS".upper(), heading_style))
+            lang_flowables.append(HRFlowable(width="100%", thickness=0.6, color=colors.HexColor("#0f2c59"), spaceAfter=4))
+            lang_flowables.append(Paragraph(" &nbsp;•&nbsp; ".join(resume.languages), body_style))
+            story.append(KeepTogether(lang_flowables))
 
         doc.build(story)
         return buf.getvalue()
@@ -343,7 +396,7 @@ class DocumentExporter:
     def generate_preview_html(cls, resume: ResumeStructured) -> str:
         """Renders an elegant, realistic A4-style interactive HTML CV preview."""
         name = (resume.contact.name or "SEU NOME COMPLETO").upper()
-        
+
         contacts = []
         if resume.contact.location:
             contacts.append(f"<span>📍 {resume.contact.location}</span>")
@@ -383,14 +436,31 @@ class DocumentExporter:
                 edu_html += "<div class='cv-edu-item'>"
                 edu_html += f"<strong>{edu.degree}</strong>"
                 if edu.institution:
-                    edu_html += f" | {edu.institution}"
+                    edu_html += f" | <span style='color: #4b5563;'>{edu.institution}</span>"
                 if edu.period:
                     edu_html += f" <span class='cv-job-period'>({edu.period})</span>"
+                if edu.details:
+                    edu_html += f"<div style='font-size: 0.85rem; font-style: italic; color: #4b5563; margin-top: 3px;'>{edu.details}</div>"
+                if edu.bullets:
+                    edu_html += "<ul class='cv-job-bullets' style='margin-top: 4px;'>"
+                    for b in edu.bullets:
+                        edu_html += f"<li>{b}</li>"
+                    edu_html += "</ul>"
                 edu_html += "</div>"
             edu_html += "</div>"
 
         skills_html = ""
-        if resume.skills:
+        if resume.skill_categories:
+            skills_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>HABILIDADES E TECNOLOGIAS</h3>"
+            for cat, items in resume.skill_categories.items():
+                skills_html += f"<div class='cv-skill-category-row'>"
+                skills_html += f"<span class='cv-skill-cat-title'>{cat}:</span>"
+                skills_html += "<div class='cv-skills-pills'>"
+                for s in items:
+                    skills_html += f"<span class='cv-skill-pill'>{s}</span>"
+                skills_html += "</div></div>"
+            skills_html += "</div>"
+        elif resume.skills:
             skills_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>HABILIDADES E TECNOLOGIAS</h3>"
             skills_html += "<div class='cv-skills-pills'>"
             for s in resume.skills:
@@ -407,7 +477,10 @@ class DocumentExporter:
         lang_html = ""
         if resume.languages:
             lang_html += "<div class='cv-preview-sec'><h3 class='cv-preview-heading'>IDIOMAS</h3>"
-            lang_html += f"<p style='font-size: 0.9rem;'>{' • '.join(resume.languages)}</p></div>"
+            lang_html += "<div class='cv-skills-pills'>"
+            for l in resume.languages:
+                lang_html += f"<span class='cv-skill-pill' style='background:#f0fdf4; border-color:#bbf7d0;'>{l}</span>"
+            lang_html += "</div></div>"
 
         summary_html = ""
         if resume.summary:
@@ -539,7 +612,7 @@ class DocumentExporter:
 
         # Issues Resolution
         story.append(Paragraph("Status de Resolução dos Problemas Identificados", h2_style))
-        
+
         if comparison.resolved_issues:
             story.append(Paragraph("<b>Problemas Resolvidos Automaticamente:</b>", cell_bold))
             for r in comparison.resolved_issues:
