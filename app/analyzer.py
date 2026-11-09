@@ -548,12 +548,18 @@ class ResumeAnalyzer:
             details.append("[Recomendação] Adicione o link limpo do seu LinkedIn no cabeçalho.")
 
         # Location (City / State / Country)
+        clean_text_for_loc = re.sub(r"https?://\S+", "", text)
+        clean_text_for_loc = re.sub(r"\b\S+\.(?:com|org|net|io|dev|edu|br|gov)\S*", "", clean_text_for_loc)
+        clean_text_for_loc = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", clean_text_for_loc)
+
+        br_ufs = r"(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)"
+        us_states = r"(?:NY|CA|TX|FL|WA|IL|MA|GA|NC|VA|CO|NJ|PA|OH)"
         loc_pattern = (
             r"\b(são paulo|rio de janeiro|curitiba|belo horizonte|porto alegre|salvador|brasília|campinas|remoto|híbrido|brasil|"
-            r"remote|hybrid|united states|usa|us|uk|london|new york|san francisco|austin|toronto|canada|berlin|germany|dublin|ireland|"
-            r"[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}|[a-z\s]+[-/]\s*[a-z]{2})\b"
+            r"guarapuava|ouro preto|remote|hybrid|united states|usa|us|uk|london|new york|san francisco|austin|toronto|canada|berlin|germany|dublin|ireland)\b|"
+            rf"\b[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+)?\s*[-/,\s]+\s*(?:{br_ufs}|{us_states})\b"
         )
-        has_location = bool(re.search(loc_pattern, text, re.IGNORECASE))
+        has_location = bool(re.search(loc_pattern, clean_text_for_loc, re.IGNORECASE))
         if has_location:
             score += 3.0
             details.append("Localização (cidade/país ou modelo de trabalho) indicada.")

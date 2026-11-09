@@ -295,3 +295,20 @@ Desenvolvedora de Sistemas com foco em backend e automação.
     assert "https://linkedin.com/in/milena-hamerski" in docx_rels
     assert "https://github.com/milena-hamerski" in docx_rels
 
+
+def test_no_false_location_from_linkedin_url():
+    md = """# Milena Hamerski
+(42) 98883-9268 | hamerskimilena@gmail.com | LinkedIn: [https://www.linkedin.com/in/milena-hamerski] | GitHub: [https://github.com/milenahamerski]
+
+## RESUMO PROFISSIONAL
+Desenvolvedora de Sistemas com foco em backend e automação.
+"""
+    struct = MarkdownResumeParser.parse(md)
+    # Location must be empty, not 'com/in'
+    assert struct.contact.location == ""
+    tokens = DocumentExporter._build_contact_tokens(struct.contact)
+    labels = [t[0] for t in tokens]
+    assert "com/in" not in labels
+    assert labels == ["(42) 98883-9268", "hamerskimilena@gmail.com", "LinkedIn", "GitHub"]
+
+

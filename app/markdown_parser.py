@@ -213,16 +213,31 @@ class MarkdownResumeParser:
             contact.portfolio = portfolio_url
 
         # Location
-        loc_patterns = [
-            r"\b([A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+)?\s*[-/,\s]+\s*[A-Z]{2})\b",
-            r"\b(São Paulo|Rio de Janeiro|Curitiba|Belo Horizonte|Porto Alegre|Salvador|Brasília|Campinas|Florianópolis|Recife|Fortaleza|Guarapuava)\b",
-            r"\b(Remoto|Híbrido|Presencial)\b"
-        ]
-        for pat in loc_patterns:
-            m = re.search(pat, text, re.IGNORECASE)
-            if m:
-                contact.location = m.group(0).strip()
-                break
+        # Strip URLs, emails, and phones first to avoid false positives (e.g. 'com/in' from linkedin.com/in)
+        text_for_loc = re.sub(r"https?://\S+", "", text)
+        text_for_loc = re.sub(r"\b\S+\.(?:com|org|net|io|dev|edu|br|gov)\S*", "", text_for_loc)
+        text_for_loc = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", text_for_loc)
+        text_for_loc = re.sub(r"(\+?\d{1,3}\s*)?(\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}", "", text_for_loc)
+
+        br_ufs = r"(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)"
+        us_states = r"(?:NY|CA|TX|FL|WA|IL|MA|GA|NC|VA|CO|NJ|PA|OH)"
+
+        # 1. Strict uppercase state abbreviation: City - UF or City, State
+        state_match = re.search(
+            rf"\b([A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõ]+)?\s*[-/,\s]+\s*(?:{br_ufs}|{us_states}))\b",
+            text_for_loc
+        )
+        if state_match:
+            contact.location = state_match.group(0).strip()
+        else:
+            # 2. Known cities or models
+            city_match = re.search(
+                r"\b(São Paulo|Rio de Janeiro|Curitiba|Belo Horizonte|Porto Alegre|Salvador|Brasília|Campinas|Florianópolis|Recife|Fortaleza|Guarapuava|Ouro Preto|Remoto|Híbrido|Presencial|Remote|Hybrid)\b",
+                text_for_loc,
+                re.IGNORECASE
+            )
+            if city_match:
+                contact.location = city_match.group(0).strip()
 
         return contact
 

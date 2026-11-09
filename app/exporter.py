@@ -36,7 +36,10 @@ class DocumentExporter:
         """Builds list of (display_label, url_or_none) for contact bar rendering across DOCX, PDF, and HTML."""
         tokens: List[Tuple[str, Optional[str]]] = []
         if contact.location:
-            tokens.append((contact.location.strip(), None))
+            loc = contact.location.strip()
+            # Guard against fragments matching URL paths like 'com/in'
+            if loc.lower() not in ["com/in", "in", "com"] and not loc.startswith("http"):
+                tokens.append((loc, None))
         if contact.phone:
             tokens.append((contact.phone.strip(), None))
         if contact.email:
