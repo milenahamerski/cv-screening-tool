@@ -6,7 +6,7 @@ Desenvolvida com **FastAPI**, **ReportLab**, **python-docx** e JavaScript modern
 
 ---
 
-## 🚀 Como Executar
+##  Como Executar
 
 ### 1. Clonar o repositório e preparar o ambiente
 
@@ -34,7 +34,7 @@ pytest -v
 
 ---
 
-## 🌟 Principais Funcionalidades
+##  Principais Funcionalidades
 
 - **Diagnóstico Técnico ATS Objetivo (0 a 100)**: Avaliação determinística baseada em 6 critérios ponderados, sem notas infladas ou cálculos opacos.
 - **Suporte a Currículos em Português e Inglês**: Motor de diagnóstico com detecção automática de idioma, avaliando verbos de ação internacionais (*engineered, architected, spearheaded*), métricas em moeda global (`$120k`, `10M users`) e convenções de títulos para vagas no Brasil ou exterior.
@@ -94,7 +94,7 @@ Download direto e instantâneo dos seguintes artefatos:
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+##  Tecnologias Utilizadas
 
 - **Backend**: Python 3.12, FastAPI, Uvicorn, Pydantic v2.
 - **Processamento de Documentos**: `python-docx` (geração e manipulação de DOCX), `reportlab` (geração de PDF de alta fidelidade), `pypdf` e `pdfplumber` (extração textual).
@@ -103,15 +103,10 @@ Download direto e instantâneo dos seguintes artefatos:
 
 ---
 
-## 🛡️ Diretrizes de Confiabilidade
+##  Diretrizes de Confiabilidade
 
 1. **Nunca inventar fatos profissionais**: Nenhum cargo, data, empresa ou habilidade ausente no original é gerado artificialmente.
 2. **Nunca inflar notas sem evidência técnica**: Se uma métrica quantitativa não existe no original, a nota desse critério não é artificialmente elevada.
 3. **Preservação de Conteúdo**: O arquivo original é mantido intacto.
 4. **Respeito à Revisão Humana**: O sistema destaca pendências de responsabilidade do candidato que nenhuma IA deve preencher por suposição.
 
----
-
-## 📄 Licença
-
-Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.
