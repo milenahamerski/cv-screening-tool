@@ -48,7 +48,7 @@ pytest -v
 
 ---
 
-## 📋 Fluxo da Aplicação
+##  Fluxo da Aplicação
 
 A interface é centralizada em **uma única página principal**, sem redirecionamentos, organizada nas seguintes seções:
 
